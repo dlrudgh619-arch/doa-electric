@@ -33,9 +33,9 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 #hdr-av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
 #logout-btn{font-size:11px;color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;font-family:inherit}
 #main{padding:14px 12px 80px}
-#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--white);border-top:.5px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 0 12px;z-index:100}
-.nb{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 0;border:none;background:none;color:var(--text2);font-size:10px;font-family:inherit}
-.nb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--white);border-top:.5px solid var(--border);display:grid;grid-template-columns:repeat(6,1fr);padding:6px 0 12px;z-index:100}
+.nb{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 0;border:none;background:none;color:var(--text2);font-size:9px;font-family:inherit}
+.nb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nb.on{color:var(--navy);font-weight:600}
 .card{background:var(--white);border:.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
@@ -205,6 +205,9 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
     <button class="nb" onclick="go('team')" id="nb-team">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>팀원
     </button>
+    <button class="nb" onclick="go('edu')" id="nb-edu">
+      <svg viewBox="0 0 24 24"><path d="M12 3L2 8l10 5 10-5-10-5z"/><path d="M2 8v8M22 8v8M6 10.5v5.5a6 6 0 0012 0v-5.5"/></svg>교육
+    </button>
   </nav>
   <button class="fab" id="fab" onclick="openAdd()">+</button>
 </div>
@@ -258,6 +261,34 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   <div class="qo-body" id="cat-body" style="padding-bottom:80px"></div>
   <div style="position:sticky;bottom:0;background:#fff;border-top:.5px solid var(--border);padding:12px 14px 20px;flex-shrink:0">
     <button id="cat-add-btn" class="btn bp" onclick="showAddCatItemSheet()">+ 품목 추가</button>
+  </div>
+</div>
+
+<!-- 교육 게시글 작성 오버레이 (관리자 전용) -->
+<div id="edu-overlay" class="full-ov">
+  <div class="qo-hdr">
+    <button class="qo-back" onclick="closeEduOverlay()">‹</button>
+    <h2 id="edu-overlay-title">교육 게시글 작성</h2>
+  </div>
+  <div class="qo-body" style="padding:14px">
+    <div class="fg"><label class="fl">제목 *</label><input class="fi" id="edu-title" placeholder="제목을 입력하세요"></div>
+    <div class="fg"><label class="fl">내용</label><textarea class="fi" id="edu-content" rows="5" placeholder="내용을 입력하세요..." style="resize:none;line-height:1.6"></textarea></div>
+    <div class="fg"><label class="fl">유튜브 링크</label><input class="fi" id="edu-yt" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="fg">
+      <label class="fl">사진 첨부</label>
+      <div id="edu-img-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px"></div>
+      <button onclick="document.getElementById('edu-img-inp').click()" class="btn" style="border:.5px solid var(--border);background:var(--bg);color:var(--navy);padding:10px;font-size:13px">📷 사진 추가</button>
+      <input type="file" id="edu-img-inp" accept="image/*" multiple style="display:none" onchange="eduImgUpload(this)">
+    </div>
+    <div class="fg">
+      <label class="fl">동영상 파일 (50MB 이하)</label>
+      <div id="edu-video-label" style="font-size:12px;color:var(--text2);margin-bottom:6px">동영상 없음</div>
+      <button onclick="document.getElementById('edu-vid-inp').click()" class="btn" style="border:.5px solid var(--border);background:var(--bg);color:var(--navy);padding:10px;font-size:13px">🎬 동영상 추가</button>
+      <input type="file" id="edu-vid-inp" accept="video/*" style="display:none" onchange="eduVideoUpload(this)">
+    </div>
+  </div>
+  <div style="position:sticky;bottom:0;background:#fff;border-top:.5px solid var(--border);padding:12px 14px 20px">
+    <button class="btn bp" onclick="saveEduPost()">등록하기</button>
   </div>
 </div>
 
@@ -526,7 +557,7 @@ async function go(s){
   screen=s
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'))
   document.getElementById('nb-'+s).classList.add('on')
-  document.getElementById('fab').style.display=(s==='quotes'&&me)||(me?.isAdmin&&['sites','team'].includes(s))?'flex':'none'
+  document.getElementById('fab').style.display=(s==='quotes'&&me)||(me?.isAdmin&&['sites','team','edu'].includes(s))?'flex':'none'
   await render()
 }
 async function render(){
@@ -536,13 +567,14 @@ async function render(){
   else if(screen==='schedule')await rSchedule()
   else if(screen==='quotes')await rQuotes()
   else if(screen==='team')await rTeam()
+  else if(screen==='edu')await rEdu()
 }
 
 // ── 유틸
 function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.style.background=err?'#E74C3C':'#1A3A5C';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
 function openSheet(html){document.getElementById('sc').innerHTML=html;document.getElementById('sbg').classList.add('on');document.getElementById('sheet').classList.add('on')}
 function closeSheet(){document.getElementById('sbg').classList.remove('on');document.getElementById('sheet').classList.remove('on');editId=null}
-function openAdd(){if(screen==='sites')showSiteForm();else if(screen==='team')showMemberForm();else if(screen==='quotes')showQuoteForm()}
+function openAdd(){if(screen==='sites')showSiteForm();else if(screen==='team')showMemberForm();else if(screen==='quotes')showQuoteForm();else if(screen==='edu')showEduForm()}
 function v(id){return document.getElementById(id)?.value?.trim()||''}
 function bc(s){return s==='진행중'?'bi':s==='완료'?'bd':s==='대기중'?'bw':'bh'}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -552,35 +584,26 @@ function getWeek(off){const d=new Date();d.setDate(d.getDate()-d.getDay()+off*7)
 
 // ══════════════ 홈 ══════════════
 async function rHome(){
-  const[sr,mr,scr]=await Promise.all([
-    db.from('sites').select('*').order('created_at',{ascending:false}),
-    db.from('members').select('*'),
-    db.from('schedules').select('*,site:sites(name),member:members(name)').eq('work_date',today())
-  ])
-  sites=sr.data||[];members=mr.data||[];schedules=scr.data||[]
-  const d=new Date(),days=['일','월','화','수','목','금','토']
+  const{data:posts}=await db.from('edu_posts').select('*').order('created_at',{ascending:false}).limit(5)
   document.getElementById('hdr-t').textContent='도아전기'
+  const d=new Date(),days=['일','월','화','수','목','금','토']
   document.getElementById('hdr-s').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`
-  const ts=schedules.reduce((a,s)=>{
-    if(!a.find(x=>x.sid===s.site_id))a.push({sid:s.site_id,sn:s.site?.name||'',ms:[]})
-    a.find(x=>x.sid===s.site_id).ms.push(s.member?.name||'')
-    return a
-  },[])
+  const postHtml=(posts||[]).length?(posts||[]).map(p=>`
+    <div class="li" onclick="go('edu')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div class="lt" style="font-size:14px">${p.title}</div>
+          <div class="ls" style="margin-top:3px">${p.author_name} · ${p.created_at?.slice(0,10)||''}</div>
+          ${p.content?`<div style="font-size:13px;color:var(--text2);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.content.slice(0,80)}</div>`:''}
+        </div>
+        ${(p.images&&p.images.length)?`<img src="${p.images[0]}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0">`:''}
+      </div>
+    </div>`).join('')
+  :`<div class="card" style="text-align:center;color:var(--text2);font-size:13px;padding:16px">아직 교육 게시글이 없어요</div>`
   document.getElementById('main').innerHTML=`
-    <div style="background:${me.isAdmin?'#FEF3C7':'#E8F0F8'};border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:${me.isAdmin?'#92400E':'var(--navy)'}">
-      ${me.isAdmin?'🔐 관리자 모드로 로그인됐어요':'👤 <b>'+me.name+'</b>님으로 로그인됐어요'}
-    </div>
     ${notifSettingCard()}
-    <div class="stats">
-      <div class="stat"><div class="stat-n">${sites.filter(s=>s.status==='진행중').length}</div><div class="stat-l">진행중 현장</div></div>
-      <div class="stat"><div class="stat-n">${members.length}</div><div class="stat-l">팀원 수</div></div>
-      <div class="stat"><div class="stat-n">${schedules.length}</div><div class="stat-l">오늘 투입</div></div>
-      <div class="stat"><div class="stat-n">${sites.filter(s=>s.status==='대기중').length}</div><div class="stat-l">대기중 현장</div></div>
-    </div>
-    <div class="sec-hdr"><div class="sec-t">오늘의 현장</div><button class="sec-a" onclick="go('schedule')">일정 보기</button></div>
-    ${ts.length?ts.map(s=>`<div class="card"><div style="font-size:15px;font-weight:600">${s.sn}</div><div style="font-size:12px;color:var(--text2);margin-top:4px">투입: ${s.ms.join(' · ')}</div></div>`).join(''):'<div class="card"><div style="text-align:center;color:var(--text2);font-size:13px;padding:8px 0">오늘 배정된 일정이 없어요</div></div>'}
-    <div class="sec-hdr" style="margin-top:4px"><div class="sec-t">최근 현장</div><button class="sec-a" onclick="go('sites')">전체보기</button></div>
-    ${sites.slice(0,3).map(s=>`<div class="li"><div class="lt">${s.name}</div><div class="lm"><span class="badge ${bc(s.status)}">${s.status}</span><span class="ls">${s.client||''}</span></div></div>`).join('')||'<div class="empty"><div class="et">현장을 추가해보세요</div></div>'}
+    <div class="sec-hdr"><div class="sec-t">최근 교육 게시글</div><button class="sec-a" onclick="go('edu')">전체보기</button></div>
+    ${postHtml}
   `
 }
 
@@ -1491,6 +1514,134 @@ function printQuotePDF(id){
 
 async function updQS(id,status){await db.from('quotes').update({status}).eq('id',id);quotes=quotes.map(q=>q.id===id?{...q,status}:q);toast('상태 변경됐어요')}
 async function delQ(id){if(!confirm('삭제할까요?'))return;await db.from('quotes').delete().eq('id',id);toast('삭제됐어요');closeSheet();rQuotes()}
+
+// ══════════════ 교육 게시판 ══════════════
+let eduPosts=[],_eduEditId=null
+
+async function rEdu(){
+  document.getElementById('hdr-t').textContent='교육 게시판'
+  const{data}=await db.from('edu_posts').select('*').order('created_at',{ascending:false})
+  eduPosts=data||[]
+  document.getElementById('hdr-s').textContent=`총 ${eduPosts.length}개`
+  document.getElementById('main').innerHTML=eduPosts.length
+    ?eduPosts.map(p=>`
+      <div class="li" onclick="viewEduPost('${p.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div class="lt">${p.title}</div>
+            <div class="ls" style="margin-top:3px">${p.author_name} · ${p.created_at?.slice(0,10)||''}</div>
+            ${p.content?`<div style="font-size:13px;color:var(--text2);margin-top:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.content.slice(0,100)}</div>`:''}
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+              ${p.youtube_url?'<span class="badge bi">▶ 유튜브</span>':''}
+              ${p.video_data?'<span class="badge bh">🎬 동영상</span>':''}
+              ${p.images&&p.images.length?`<span class="badge bh">📷 사진 ${p.images.length}장</span>`:''}
+            </div>
+          </div>
+          ${p.images&&p.images.length?`<img src="${p.images[0]}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0">`:''}
+        </div>
+      </div>`).join('')
+    :`<div class="empty"><div class="ei">📚</div><div style="font-size:14px">게시글이 없어요</div><div style="font-size:12px;margin-top:6px">${me?.isAdmin?'+ 버튼을 눌러 작성하세요':''}</div></div>`
+}
+
+function viewEduPost(id){
+  const p=eduPosts.find(x=>x.id===id);if(!p)return
+  const ytId=p.youtube_url?extractYtId(p.youtube_url):null
+  openSheet(`
+    <div class="st">${p.title}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">${p.author_name} · ${p.created_at?.slice(0,10)||''}</div>
+    ${p.content?`<div style="font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;margin-bottom:14px">${p.content}</div>`:''}
+    ${p.images&&p.images.length?`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:14px">${p.images.map(img=>`<img src="${img}" style="width:100%;border-radius:8px;object-fit:cover;aspect-ratio:1" onclick="window.open(this.src,'_blank')">`).join('')}</div>`:''}
+    ${ytId?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">▶ 유튜브 영상</div><div style="position:relative;padding-bottom:56.25%;height:0;border-radius:10px;overflow:hidden"><iframe src="https://www.youtube.com/embed/${ytId}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen></iframe></div></div>`:''}
+    ${p.video_data?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">🎬 ${p.video_name||'동영상'}</div><video controls style="width:100%;border-radius:10px;background:#000" src="${p.video_data}"></video></div>`:''}
+    ${me?.isAdmin?`<div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn bp" onclick="showEduForm('${p.id}')" style="flex:1">수정</button>
+      <button class="btn bg-r" onclick="delEduPost('${p.id}')" style="flex:1;border:.5px solid var(--border)">삭제</button>
+    </div>`:''}
+  `)
+}
+
+function extractYtId(url){
+  const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/)
+  return m?m[1]:null
+}
+
+function showEduForm(editId=null){
+  _eduEditId=editId
+  const p=editId?eduPosts.find(x=>x.id===editId):null
+  document.getElementById('edu-overlay').classList.add('on')
+  document.getElementById('edu-title').value=p?.title||''
+  document.getElementById('edu-content').value=p?.content||''
+  document.getElementById('edu-yt').value=p?.youtube_url||''
+  window._eduImages=p?.images?[...p.images]:[]
+  window._eduVideo=p?.video_data||null
+  window._eduVideoName=p?.video_name||''
+  renderEduImages()
+  document.getElementById('edu-video-label').textContent=p?.video_data?`✅ ${p.video_name||'동영상 첨부됨'}`:'동영상 없음'
+}
+
+function closeEduOverlay(){
+  document.getElementById('edu-overlay').classList.remove('on')
+  _eduEditId=null;window._eduImages=[];window._eduVideo=null;window._eduVideoName=''
+}
+
+function renderEduImages(){
+  const grid=document.getElementById('edu-img-grid')
+  if(!grid)return
+  grid.innerHTML=(window._eduImages||[]).map((img,i)=>`
+    <div style="position:relative">
+      <img src="${img}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px">
+      <button onclick="removeEduImg(${i})" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1">×</button>
+    </div>`).join('')
+}
+
+function removeEduImg(i){window._eduImages.splice(i,1);renderEduImages()}
+
+function eduImgUpload(input){
+  const files=Array.from(input.files)
+  files.forEach(f=>{
+    if(f.size>5*1024*1024){toast('사진은 5MB 이하만 가능해요',true);return}
+    const r=new FileReader()
+    r.onload=e=>{window._eduImages.push(e.target.result);renderEduImages()}
+    r.readAsDataURL(f)
+  })
+  input.value=''
+}
+
+function eduVideoUpload(input){
+  const f=input.files[0];if(!f)return
+  if(f.size>50*1024*1024){toast('동영상은 50MB 이하만 가능해요',true);return}
+  const r=new FileReader()
+  r.onload=e=>{
+    window._eduVideo=e.target.result;window._eduVideoName=f.name
+    document.getElementById('edu-video-label').textContent=`✅ ${f.name}`
+    toast('동영상 첨부됐어요')
+  }
+  r.readAsDataURL(f)
+  input.value=''
+}
+
+async function saveEduPost(){
+  const title=document.getElementById('edu-title')?.value.trim()
+  const content=document.getElementById('edu-content')?.value.trim()
+  const youtube_url=document.getElementById('edu-yt')?.value.trim()
+  if(!title){toast('제목을 입력하세요',true);return}
+  const payload={title,content,youtube_url:youtube_url||null,images:window._eduImages||[],video_data:window._eduVideo||null,video_name:window._eduVideoName||null,author_name:me.name}
+  let error
+  if(_eduEditId){
+    ({error}=await db.from('edu_posts').update(payload).eq('id',_eduEditId))
+  } else {
+    ({error}=await db.from('edu_posts').insert(payload))
+  }
+  if(error){toast('저장 실패: '+error.message,true);return}
+  toast(_eduEditId?'수정됐어요':'게시글이 등록됐어요')
+  closeEduOverlay();closeSheet();rEdu()
+}
+
+async function delEduPost(id){
+  if(!confirm('게시글을 삭제할까요?'))return
+  await db.from('edu_posts').delete().eq('id',id)
+  toast('삭제됐어요');closeSheet();rEdu()
+}
 
 // ══════════════ 팀원 + 근태 ══════════════
 async function rTeam(){
