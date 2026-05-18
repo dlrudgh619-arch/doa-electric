@@ -339,7 +339,7 @@ let me=JSON.parse(localStorage.getItem('doa_user')||'null')
 let screen='home',sites=[],members=[],schedules=[],quotes=[],sFilter='전체',wOff=0,editId=null,qNum=0
 let attY=new Date().getFullYear(),attMo=new Date().getMonth()
 let adminAttMemberId=null,adminAttMemberName=''
-let qItems={},qCatTab='전선/케이블',qItemSeq=0
+let qItems={},qCatTab='전선/케이블',qItemSeq=0,catalogItems=[],qQtys={},catMgrTab=CATS[0]
 
 // ── 초기화
 window.addEventListener('DOMContentLoaded',async()=>{
@@ -1068,7 +1068,6 @@ async function confirmDelEvt(id){
 }
 
 // ══════════════ 견적 ══════════════
-let catalogItems=[], qQtys={}, qCatTab=CATS[0]
 
 async function rQuotes(){
   document.getElementById('hdr-t').textContent='견적서'
@@ -1092,7 +1091,6 @@ async function rQuotes(){
 }
 
 // ══ 카탈로그 관리 (관리자) ══
-let catMgrTab=CATS[0]
 
 async function openCatalogMgr(){
   const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
