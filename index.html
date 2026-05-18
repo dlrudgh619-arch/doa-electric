@@ -957,50 +957,72 @@ async function delSite(id){
 }
 
 // ── 현장 메모
+let _memoSiteId=null,_memoSiteName='',_memoEditId=null
+
 async function openMemos(siteId,siteName){
+  _memoSiteId=siteId;_memoSiteName=siteName;_memoEditId=null
   openSheet(`<div class="st">${siteName} — 메모</div><div class="loading"><div class="spin"></div></div>`)
-  const{data}=await db.from('site_memos').select('*').eq('site_id',siteId).order('created_at',{ascending:false})
-  renderMemos(siteId,siteName,data||[])
+  await refreshMemos()
 }
-function renderMemos(siteId,siteName,memos){
+async function refreshMemos(){
+  const{data}=await db.from('site_memos').select('*').eq('site_id',_memoSiteId).order('created_at',{ascending:false})
+  renderMemos(data||[])
+}
+function renderMemos(memos){
   const listHtml=memos.length
-    ?memos.map(m=>`
-      <div style="background:var(--bg);border-radius:10px;padding:11px 13px;margin-bottom:8px">
+    ?memos.map(m=>{
+      const isEdit=_memoEditId===m.id
+      return `<div style="background:var(--bg);border-radius:10px;padding:11px 13px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
           <span style="font-size:12px;font-weight:600;color:var(--navy)">${m.member_name}</span>
           <span style="font-size:11px;color:var(--text2)">${m.created_at?.slice(0,16).replace('T',' ')||''}</span>
         </div>
-        <div style="font-size:14px;color:var(--text);line-height:1.5;white-space:pre-wrap">${m.content}</div>
-        <button onclick="delMemo('${m.id}','${siteId}','${siteName.replace(/'/g,'')}')" style="background:none;border:none;color:#CBD5E1;font-size:11px;cursor:pointer;margin-top:4px;padding:0">삭제</button>
-      </div>`).join('')
+        ${isEdit
+          ?`<textarea id="memo-edit-${m.id}" rows="3" style="width:100%;padding:9px 10px;border:.5px solid var(--navy);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);resize:none;outline:none;background:#fff;line-height:1.5">${m.content}</textarea>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button onclick="saveEditMemo('${m.id}')" style="flex:1;padding:8px;border-radius:7px;background:var(--navy);color:#fff;border:none;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">수정 완료</button>
+              <button onclick="_memoEditId=null;refreshMemos()" style="padding:8px 14px;border-radius:7px;border:.5px solid var(--border);background:#fff;color:var(--text2);font-size:13px;font-family:inherit;cursor:pointer">취소</button>
+            </div>`
+          :`<div style="font-size:14px;color:var(--text);line-height:1.5;white-space:pre-wrap">${m.content}</div>
+            <div style="display:flex;gap:10px;margin-top:6px">
+              <button onclick="_memoEditId='${m.id}';refreshMemos()" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;padding:0">수정</button>
+              <button onclick="delMemo('${m.id}')" style="background:none;border:none;color:#CBD5E1;font-size:11px;cursor:pointer;padding:0">삭제</button>
+            </div>`
+        }
+      </div>`}).join('')
     :`<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">아직 메모가 없어요</div>`
   document.getElementById('sc').innerHTML=`
-    <div class="st">${siteName} — 메모 (${memos.length})</div>
-    <div style="margin-bottom:12px">
+    <div class="st">${_memoSiteName} — 메모 (${memos.length})</div>
+    <div style="margin-bottom:14px">
       <textarea id="memo-inp" rows="3" placeholder="메모 내용을 입력하세요..." style="width:100%;padding:11px 12px;border:.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);resize:none;outline:none;background:#fff;line-height:1.5"></textarea>
-      <button onclick="addMemo('${siteId}','${siteName.replace(/'/g,'')}','${JSON.stringify(memos).replace(/'/g,'')}')" style="width:100%;margin-top:6px;padding:11px;border-radius:8px;background:var(--navy);color:#fff;border:none;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">메모 등록</button>
+      <button onclick="addMemo()" style="width:100%;margin-top:6px;padding:11px;border-radius:8px;background:var(--navy);color:#fff;border:none;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">메모 등록</button>
     </div>
     ${listHtml}`
 }
-async function addMemo(siteId,siteName,memosJson){
+async function addMemo(){
   const content=document.getElementById('memo-inp')?.value.trim()
   if(!content){toast('내용을 입력하세요',true);return}
-  const{data,error}=await db.from('site_memos').insert({
-    site_id:siteId,member_id:me.id,member_name:me.name,content
-  }).select().single()
+  const{error}=await db.from('site_memos').insert({
+    site_id:_memoSiteId,member_id:me.id,member_name:me.name,content
+  })
   if(error){toast('저장 실패',true);return}
-  let memos=[]
-  try{memos=JSON.parse(memosJson||'[]')}catch(e){}
-  memos=[data,...memos]
-  renderMemos(siteId,siteName,memos)
   toast('메모 등록됐어요')
+  await refreshMemos()
 }
-async function delMemo(id,siteId,siteName){
+async function saveEditMemo(id){
+  const content=document.getElementById('memo-edit-'+id)?.value.trim()
+  if(!content){toast('내용을 입력하세요',true);return}
+  const{error}=await db.from('site_memos').update({content}).eq('id',id)
+  if(error){toast('수정 실패',true);return}
+  _memoEditId=null
+  toast('수정됐어요')
+  await refreshMemos()
+}
+async function delMemo(id){
   if(!confirm('메모를 삭제할까요?'))return
   await db.from('site_memos').delete().eq('id',id)
-  const{data}=await db.from('site_memos').select('*').eq('site_id',siteId).order('created_at',{ascending:false})
-  renderMemos(siteId,siteName,data||[])
   toast('삭제됐어요')
+  await refreshMemos()
 }
 
 // ══════════════ 일정 (네이버웍스 스타일) ══════════════
