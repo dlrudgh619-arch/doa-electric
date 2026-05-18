@@ -1288,11 +1288,16 @@ function printQuotePDF(id){
   document.getElementById('printarea').innerHTML=`<div style="padding:28px 36px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;font-size:13px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #1A3A5C;padding-bottom:14px;margin-bottom:18px">
       <div><div style="font-size:30px;font-weight:900;color:#1A3A5C;letter-spacing:-1px">견 적 서</div><div style="font-size:12px;color:#888;margin-top:4px">작성일: ${dateStr}</div></div>
-      <div style="text-align:right;line-height:1.8"><div style="font-size:16px;font-weight:800;color:#1A3A5C">도아랩</div><div style="font-size:11px;color:#555">대표: 이경호</div><div style="font-size:11px;color:#555">사업자등록번호: 259-27-01423</div><div style="font-size:11px;color:#555">HP: 010-9436-8611</div></div>
+      <div style="text-align:right;line-height:1.9">
+        <div style="font-size:16px;font-weight:800;color:#1A3A5C">도아랩  |  대표: 이경호</div>
+        <div style="font-size:11px;color:#555">사업자: 259-27-01423</div>
+        <div style="font-size:11px;color:#555">HP: 010-9436-8611</div>
+        <div style="font-size:11px;color:#555">주소: 청천동 59-1 신한빌딩 103호</div>
+        <div style="font-size:11px;color:#555">국민은행 466801-04-402993</div>
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
-      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px"><div style="font-size:10px;color:#758AA0;font-weight:700;letter-spacing:.06em;margin-bottom:5px">발주처</div><div style="font-size:15px;font-weight:700;color:#1A3A5C">${q.client||'-'}</div>${q.site_name?`<div style="font-size:11px;color:#666;margin-top:2px">현장: ${q.site_name}</div>`:''}</div>
-      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px"><div style="font-size:10px;color:#758AA0;font-weight:700;letter-spacing:.06em;margin-bottom:5px">회사 정보</div><div style="font-size:11px;color:#444;line-height:1.8">주소: 청천동 59-1 신한빌딩 103호<br>국민은행: 466801-04-402993</div></div>
+    <div style="margin-bottom:18px">
+      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px;display:inline-block;min-width:200px"><div style="font-size:10px;color:#758AA0;font-weight:700;letter-spacing:.06em;margin-bottom:5px">발주처</div><div style="font-size:15px;font-weight:700;color:#1A3A5C">${q.client||'-'}</div>${q.site_name?`<div style="font-size:11px;color:#666;margin-top:2px">현장: ${q.site_name}</div>`:''}</div>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
       <thead><tr style="background:#1A3A5C;color:#fff"><th style="padding:9px 12px;text-align:left">품명</th><th style="padding:9px 12px;text-align:left;width:80px">규격</th><th style="padding:9px 12px;text-align:center;width:50px">단위</th><th style="padding:9px 12px;text-align:right;width:50px">수량</th><th style="padding:9px 12px;text-align:right;width:90px">단가</th><th style="padding:9px 12px;text-align:right;width:100px">금액</th></tr></thead>
