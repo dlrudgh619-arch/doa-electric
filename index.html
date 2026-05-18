@@ -255,7 +255,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   <div class="qo-tabs" id="cat-tabs"></div>
   <div class="qo-body" id="cat-body" style="padding-bottom:80px"></div>
   <div style="position:sticky;bottom:0;background:#fff;border-top:.5px solid var(--border);padding:12px 14px 20px;flex-shrink:0">
-    <button class="btn bp" onclick="showAddCatItemSheet()">+ 품목 추가</button>
+    <button id="cat-add-btn" class="btn bp" onclick="showAddCatItemSheet()">+ 품목 추가</button>
   </div>
 </div>
 
@@ -1091,21 +1091,22 @@ async function rQuotes(){
 }
 
 // ══ 카탈로그 관리 (관리자) ══
+let catAddOpen=false
 
 async function openCatalogMgr(){
   const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
   catalogItems=data||[]
-  catMgrTab=CATS[0]
+  catMgrTab=CATS[0];catAddOpen=false
   document.getElementById('cat-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===catMgrTab?' on':''}" onclick="setCatMgrTab('${c}')">${c}</button>`).join('')
   renderCatMgr()
   document.getElementById('catoverlay').classList.add('on')
 }
-function closeCatalogMgr(){document.getElementById('catoverlay').classList.remove('on')}
-function setCatMgrTab(c){catMgrTab=c;document.querySelectorAll('#cat-tabs .qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c));renderCatMgr()}
+function closeCatalogMgr(){document.getElementById('catoverlay').classList.remove('on');catAddOpen=false}
+function setCatMgrTab(c){catMgrTab=c;catAddOpen=false;document.querySelectorAll('#cat-tabs .qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c));renderCatMgr()}
 
 function renderCatMgr(){
   const items=catalogItems.filter(i=>i.cat===catMgrTab)
-  document.getElementById('cat-body').innerHTML=items.length
+  const listHtml=items.length
     ?items.map(i=>`
       <div class="cm-item">
         <div class="cm-meta">
@@ -1116,34 +1117,42 @@ function renderCatMgr(){
         <button class="cm-del" onclick="deleteCatItem('${i.id}')">×</button>
       </div>`).join('')
     :`<div class="empty" style="padding:32px 20px"><div class="ei">📦</div><div style="font-size:13px">품목이 없어요</div><div style="font-size:12px;margin-top:4px">아래 버튼으로 추가하세요</div></div>`
+  const addFormHtml=catAddOpen?`
+    <div style="background:#F2F5FA;border-radius:12px;padding:14px;margin:10px 14px 0">
+      <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:12px">+ 품목 추가 · ${catMgrTab}</div>
+      <div class="fg"><label class="fl">품명 *</label><input class="fi" id="ci-name" placeholder="예) HIV 2.5sq" style="background:#fff"></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">규격</label><input class="fi" id="ci-spec" placeholder="예) 100m/R" style="background:#fff"></div>
+        <div class="fg"><label class="fl">단위</label><input class="fi" id="ci-unit" placeholder="롤, 개, m" style="background:#fff"></div>
+      </div>
+      <div class="fg"><label class="fl">단가 (원) *</label><input class="fi" type="number" id="ci-price" placeholder="0" min="0" style="background:#fff"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn bp" onclick="saveCatItem()" style="flex:1">저장</button>
+        <button class="btn" onclick="catAddOpen=false;renderCatMgr()" style="flex:0 0 70px;border:.5px solid var(--border);background:#fff;color:var(--text2)">취소</button>
+      </div>
+    </div>`:''
+  document.getElementById('cat-body').innerHTML=listHtml+addFormHtml
+  if(catAddOpen)setTimeout(()=>document.getElementById('ci-name')?.focus(),50)
+  document.getElementById('cat-add-btn').textContent=catAddOpen?'▲ 닫기':'+ 품목 추가'
 }
 
-function showAddCatItemSheet(){
-  openSheet(`
-    <div class="st">품목 추가 · ${catMgrTab}</div>
-    <div class="fg"><label class="fl">품명 *</label><input class="fi" id="ci-name" placeholder="예) HIV 2.5sq"></div>
-    <div class="fr">
-      <div class="fg"><label class="fl">규격</label><input class="fi" id="ci-spec" placeholder="예) 100m/R"></div>
-      <div class="fg"><label class="fl">단위</label><input class="fi" id="ci-unit" placeholder="예) 롤, 개, m"></div>
-    </div>
-    <div class="fg"><label class="fl">단가 (원) *</label><input class="fi" type="number" id="ci-price" placeholder="0" min="0"></div>
-    <button class="btn bp" onclick="saveCatItem()">추가</button>`)
-  setTimeout(()=>document.getElementById('ci-name')?.focus(),100)
-}
+function showAddCatItemSheet(){catAddOpen=!catAddOpen;renderCatMgr()}
 
 async function saveCatItem(){
   const name=document.getElementById('ci-name')?.value.trim()
   const price=parseInt(document.getElementById('ci-price')?.value||0)
   if(!name){toast('품명을 입력하세요',true);return}
   if(!price){toast('단가를 입력하세요',true);return}
-  const{data}=await db.from('catalog_items').insert({
+  const{data,error}=await db.from('catalog_items').insert({
     cat:catMgrTab,name,
     spec:document.getElementById('ci-spec')?.value.trim()||'',
     unit:document.getElementById('ci-unit')?.value.trim()||'',
     price,sort_order:catalogItems.filter(i=>i.cat===catMgrTab).length
   }).select().single()
+  if(error){toast('저장 실패: '+error.message,true);return}
   catalogItems.push(data)
-  toast('추가됐어요');closeSheet();renderCatMgr()
+  catAddOpen=false
+  toast('추가됐어요');renderCatMgr()
 }
 
 async function deleteCatItem(id){
@@ -1152,6 +1161,7 @@ async function deleteCatItem(id){
   catalogItems=catalogItems.filter(i=>i.id!==id)
   toast('삭제됐어요');renderCatMgr()
 }
+
 
 // ══ 견적서 작성 ══
 async function showQuoteForm(){
@@ -1223,12 +1233,14 @@ async function saveQFromCatalog(){
   const mgRate=parseFloat(document.getElementById('qs-margin-rate').value||0)
   const tool=Math.round(mat*toolRate/100),mg=Math.round(mat*mgRate/100)
   const supply=mat+tool+mg,vat=Math.round(supply*.1),grand=supply+vat
-  await db.from('quotes').insert({
+  const{error}=await db.from('quotes').insert({
     site_name:document.getElementById('qo-site-name').value.trim(),
     client:document.getElementById('qo-client').value.trim(),
     items:allItems,mat,tool_rate:toolRate,tool_cost:tool,
-    margin_rate:mgRate,margin_cost:mg,supply,vat,grand,status:'작성중'
+    margin_rate:mgRate,margin_cost:mg,supply,vat,grand,
+    total:grand,status:'작성중'
   })
+  if(error){toast('저장 실패: '+error.message,true);return}
   toast('견적서 저장됐어요');closeQOverlay();rQuotes()
 }
 
