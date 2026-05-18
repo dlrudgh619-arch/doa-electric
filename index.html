@@ -485,9 +485,31 @@ function setupRealtime(){
       pushNotif('📷 사진 업로드','현장에 새 사진이 추가됐어요')
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'site_materials'},p=>{
-      pushNotif('📦 자재 추가',p.new.name+' 항목이 추가됐어요')
+      pushNotif('📦 자재 추가',`'${p.new.name}' 항목이 추가됐어요`)
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'site_materials'},p=>{
+      if(p.new.is_checked!==p.old?.is_checked)
+        pushNotif('📦 자재 체크',`'${p.new.name}' ${p.new.is_checked?'완료 처리됐어요':'미완료로 변경됐어요'}`)
     })
     .subscribe()
+}
+async function enableNotif(){
+  if(!('Notification' in window)){toast('이 브라우저는 알림을 지원하지 않아요',true);return}
+  const perm=await Notification.requestPermission()
+  if(perm==='granted'){toast('알림이 켜졌어요 🔔');rHome()}
+  else toast('알림이 차단됐어요. 브라우저 설정에서 허용해주세요',true)
+}
+function notifSettingCard(){
+  const s='Notification' in window?Notification.permission:'unsupported'
+  const statusMap={granted:['#D1FAE5','#065F46','✅ 켜짐'],denied:['#FEE2E2','#991B1B','🚫 차단'],default:['#FEF3C7','#92400E','🔕 꺼짐'],unsupported:['#F1F5F9','#64748B','⚠️ 미지원']}
+  const[bg,fg,label]=statusMap[s]||statusMap.unsupported
+  return `<div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer" onclick="${s==='default'?'enableNotif()':s==='denied'?'toast(\'브라우저 설정 > 알림 > 도아전기 허용으로 변경해주세요\',true)':''}">
+    <div>
+      <div style="font-size:14px;font-weight:600;color:var(--navy)">🔔 푸시 알림 설정</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">${s==='granted'?'현장 사진·자재·메모 업데이트 알림 수신 중':s==='denied'?'브라우저 설정에서 알림을 허용해주세요':s==='default'?'탭하면 알림을 켤 수 있어요':'이 브라우저는 알림을 지원하지 않아요'}</div>
+    </div>
+    <span style="background:${bg};color:${fg};padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;margin-left:8px">${label}</span>
+  </div>`
 }
 
 // ── 네비
@@ -539,6 +561,7 @@ async function rHome(){
     <div style="background:${me.isAdmin?'#FEF3C7':'#E8F0F8'};border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:${me.isAdmin?'#92400E':'var(--navy)'}">
       ${me.isAdmin?'🔐 관리자 모드로 로그인됐어요':'👤 <b>'+me.name+'</b>님으로 로그인됐어요'}
     </div>
+    ${notifSettingCard()}
     <div class="stats">
       <div class="stat"><div class="stat-n">${sites.filter(s=>s.status==='진행중').length}</div><div class="stat-l">진행중 현장</div></div>
       <div class="stat"><div class="stat-n">${members.length}</div><div class="stat-l">팀원 수</div></div>
