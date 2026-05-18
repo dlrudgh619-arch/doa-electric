@@ -113,6 +113,54 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .mem-att-row:last-child{border-bottom:none}
 .att-bar-wrap{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
 .att-bar-fill{height:100%;background:var(--navy);border-radius:3px}
+/* ── 견적 카탈로그 오버레이 ── */
+#qoverlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;overflow-y:auto;max-width:430px;left:50%;transform:translateX(-50%);flex-direction:column}
+#qoverlay.on{display:flex}
+.qo-hdr{background:var(--navy);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;flex-shrink:0}
+.qo-hdr h2{font-size:16px;font-weight:600;flex:1}
+.qo-back{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit}
+.qo-isvm{font-size:11px;color:rgba(255,255,255,.75);background:rgba(255,255,255,.13);border:none;border-radius:10px;padding:4px 10px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.qo-info{background:#fff;padding:12px 14px;border-bottom:.5px solid var(--border);flex-shrink:0}
+.qo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.qo-margin-wrap{display:flex;align-items:center;gap:8px;margin-top:4px}
+.qo-margin-wrap label{font-size:12px;color:var(--text2);white-space:nowrap}
+.qo-margin-wrap input[type=range]{flex:1;accent-color:var(--navy);height:4px}
+.qo-margin-val{font-size:14px;font-weight:700;color:var(--navy);min-width:40px;text-align:right}
+.qo-tabs{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;background:#fff;border-bottom:.5px solid var(--border);position:sticky;top:50px;z-index:9;flex-shrink:0}
+.qo-tabs::-webkit-scrollbar{display:none}
+.qo-tab{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:.5px solid var(--border);background:#fff;color:var(--text2);font-family:inherit}
+.qo-tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.qo-search-wrap{padding:8px 12px;background:#fff;border-bottom:.5px solid var(--border);flex-shrink:0}
+.qo-search-wrap input{width:100%;padding:9px 12px;border:.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);outline:none;background:var(--bg)}
+.qo-search-wrap input:focus{border-color:var(--blue);background:#fff}
+.qo-list{padding:10px 12px 110px;flex:1}
+.qo-item{background:#fff;border:.5px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:8px}
+.qo-item.selected{border-color:var(--navy);background:#EEF4FB}
+.qo-item-top{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.qo-check{width:22px;height:22px;border:1.5px solid #CBD5E1;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.qo-item.selected .qo-check{background:var(--navy);border-color:var(--navy);color:#fff;font-size:12px}
+.qo-meta{flex:1;min-width:0}
+.qo-name{font-size:14px;font-weight:600;color:var(--text);line-height:1.3}
+.qo-spec{font-size:11px;color:var(--text2);margin-top:2px}
+.qo-price-col{text-align:right;flex-shrink:0}
+.qo-sell{font-size:14px;font-weight:700;color:var(--navy)}
+.qo-cost{font-size:10px;color:var(--text2);margin-top:2px}
+.qo-qty-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:.5px solid var(--border)}
+.qo-qty-row label{font-size:12px;color:var(--text2);flex:1}
+.qo-qty-row button{width:28px;height:28px;border-radius:7px;border:.5px solid var(--border);background:#fff;font-size:16px;cursor:pointer;line-height:1;color:var(--navy);font-family:inherit;flex-shrink:0}
+.qo-qty-row input{width:46px;height:28px;border:.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center;font-family:inherit;color:var(--text);outline:none}
+.qo-unit{font-size:11px;color:var(--text2)}
+.qo-bottom{position:sticky;bottom:0;background:#fff;border-top:.5px solid var(--border);padding:10px 14px 18px;flex-shrink:0;z-index:10}
+.qo-summary{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.qo-cnt{font-size:12px;color:var(--text2)}
+.qo-total{font-size:16px;font-weight:700;color:var(--navy)}
+/* ── 견적서 추가 입력 ── */
+.qo-custom{background:#fff;border:.5px dashed var(--border);border-radius:10px;padding:12px 13px;margin-bottom:8px}
+.qo-custom-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px}
+.qo-custom-row{display:grid;grid-template-columns:2fr 1fr 1.3fr auto;gap:6px;align-items:center;margin-bottom:6px}
+/* ── PDF 인쇄 ── */
+@media print{body>*{display:none!important}#printarea{display:block!important;position:fixed;inset:0;background:#fff;z-index:9999;overflow:visible}}
+#printarea{display:none;padding:20px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;font-size:13px}
 </style>
 </head>
 <body>
@@ -163,6 +211,37 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 <div id="sbg" onclick="closeSheet()"></div>
 <div id="sheet"><div class="sh"></div><div id="sc"></div></div>
 <div id="toast"></div>
+<div id="printarea"></div>
+
+<!-- 견적 카탈로그 오버레이 -->
+<div id="qoverlay">
+  <div class="qo-hdr">
+    <button class="qo-back" onclick="closeQOverlay()">‹</button>
+    <h2>견적서 작성</h2>
+    <button class="qo-isvm" onclick="window.open('https://isvm.co.kr','_blank')">isvm 가격확인 ↗</button>
+  </div>
+  <div class="qo-info">
+    <div class="qo-row">
+      <div><label class="fl">현장</label><select class="fi" id="qo-site" style="background:#fff"><option value="">선택 (선택사항)</option></select></div>
+      <div><label class="fl">발주처</label><input class="fi" id="qo-client" placeholder="발주처명"></div>
+    </div>
+    <div class="qo-margin-wrap">
+      <label>마진율</label>
+      <input type="range" min="30" max="60" value="45" id="qo-margin" oninput="updateMargin(this.value)">
+      <span class="qo-margin-val" id="qo-margin-val">+45%</span>
+    </div>
+  </div>
+  <div class="qo-tabs" id="qo-tabs"></div>
+  <div class="qo-search-wrap"><input id="qo-search" placeholder="자재명 검색..." oninput="renderQItems()" autocomplete="off"></div>
+  <div class="qo-list" id="qo-list"></div>
+  <div class="qo-bottom">
+    <div class="qo-summary">
+      <span class="qo-cnt" id="qo-cnt">선택된 품목 없음</span>
+      <span class="qo-total" id="qo-total">0원</span>
+    </div>
+    <button class="btn bp" onclick="saveQFromCatalog()">견적서 저장</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -175,10 +254,81 @@ const ADMIN_PIN='153528'
 const COLORS=['#DBEAFE:#1D4ED8','#D1FAE5:#065F46','#FEE2E2:#991B1B','#EDE9FE:#5B21B6','#FEF9C3:#854D0E','#E0F2FE:#0369A1','#FCE7F3:#9D174D']
 const db=supabase.createClient(SURL,SKEY)
 
+// ── 자재 카탈로그 (isvm.co.kr 도매가 기준)
+const CATALOG=[
+  // 전선/케이블
+  {id:'w01',cat:'전선/케이블',name:'HIV 1.5sq',spec:'100m/R',unit:'롤',cost:42000},
+  {id:'w02',cat:'전선/케이블',name:'HIV 2.5sq',spec:'100m/R',unit:'롤',cost:68000},
+  {id:'w03',cat:'전선/케이블',name:'HIV 4sq',spec:'100m/R',unit:'롤',cost:110000},
+  {id:'w04',cat:'전선/케이블',name:'HIV 6sq',spec:'100m/R',unit:'롤',cost:162000},
+  {id:'w05',cat:'전선/케이블',name:'HIV 10sq',spec:'100m/R',unit:'롤',cost:265000},
+  {id:'w06',cat:'전선/케이블',name:'HIV 16sq',spec:'100m/R',unit:'롤',cost:420000},
+  {id:'w07',cat:'전선/케이블',name:'HFIX 2.5sq',spec:'100m/R',unit:'롤',cost:83000},
+  {id:'w08',cat:'전선/케이블',name:'HFIX 4sq',spec:'100m/R',unit:'롤',cost:128000},
+  {id:'w09',cat:'전선/케이블',name:'CVV 2C×1.5sq',spec:'100m/R',unit:'롤',cost:75000},
+  {id:'w10',cat:'전선/케이블',name:'CVV 2C×2.5sq',spec:'100m/R',unit:'롤',cost:118000},
+  {id:'w11',cat:'전선/케이블',name:'CVV 3C×2.5sq',spec:'100m/R',unit:'롤',cost:165000},
+  {id:'w12',cat:'전선/케이블',name:'VVR 2C×2.5sq',spec:'100m/R',unit:'롤',cost:98000},
+  {id:'w13',cat:'전선/케이블',name:'FR-CVV 2C×2.5sq',spec:'100m/R',unit:'롤',cost:135000},
+  // 분전함/차단기
+  {id:'b01',cat:'분전함/차단기',name:'MCB 2P 20A',spec:'LS산전',unit:'개',cost:3200},
+  {id:'b02',cat:'분전함/차단기',name:'MCB 2P 30A',spec:'LS산전',unit:'개',cost:3800},
+  {id:'b03',cat:'분전함/차단기',name:'MCB 3P 30A',spec:'LS산전',unit:'개',cost:11500},
+  {id:'b04',cat:'분전함/차단기',name:'MCB 3P 50A',spec:'LS산전',unit:'개',cost:15000},
+  {id:'b05',cat:'분전함/차단기',name:'ELB 2P 20A 30mA',spec:'LS산전',unit:'개',cost:8200},
+  {id:'b06',cat:'분전함/차단기',name:'ELB 2P 30A 30mA',spec:'LS산전',unit:'개',cost:9500},
+  {id:'b07',cat:'분전함/차단기',name:'ELB 3P 30A 30mA',spec:'LS산전',unit:'개',cost:21000},
+  {id:'b08',cat:'분전함/차단기',name:'ELB 3P 50A 30mA',spec:'LS산전',unit:'개',cost:28000},
+  {id:'b09',cat:'분전함/차단기',name:'분전함 6회로',spec:'일반형',unit:'대',cost:32000},
+  {id:'b10',cat:'분전함/차단기',name:'분전함 12회로',spec:'일반형',unit:'대',cost:52000},
+  {id:'b11',cat:'분전함/차단기',name:'분전함 18회로',spec:'일반형',unit:'대',cost:72000},
+  {id:'b12',cat:'분전함/차단기',name:'분전함 24회로',spec:'일반형',unit:'대',cost:95000},
+  // 배관자재
+  {id:'p01',cat:'배관자재',name:'CD파이프 16mm',spec:'100m/R',unit:'롤',cost:14500},
+  {id:'p02',cat:'배관자재',name:'CD파이프 22mm',spec:'50m/R',unit:'롤',cost:17000},
+  {id:'p03',cat:'배관자재',name:'CD파이프 28mm',spec:'30m/R',unit:'롤',cost:15000},
+  {id:'p04',cat:'배관자재',name:'PF파이프 16mm',spec:'50m/R',unit:'롤',cost:23000},
+  {id:'p05',cat:'배관자재',name:'PF파이프 22mm',spec:'50m/R',unit:'롤',cost:35000},
+  {id:'p06',cat:'배관자재',name:'합성수지관 16mm',spec:'4m/본',unit:'본',cost:1200},
+  {id:'p07',cat:'배관자재',name:'합성수지관 22mm',spec:'4m/본',unit:'본',cost:1800},
+  {id:'p08',cat:'배관자재',name:'합성수지관 28mm',spec:'4m/본',unit:'본',cost:2400},
+  {id:'p09',cat:'배관자재',name:'금속관(후강) 16mm',spec:'3.66m/본',unit:'본',cost:4200},
+  {id:'p10',cat:'배관자재',name:'금속관(후강) 22mm',spec:'3.66m/본',unit:'본',cost:5800},
+  {id:'p11',cat:'배관자재',name:'4각 박스 38mm',spec:'',unit:'개',cost:380},
+  {id:'p12',cat:'배관자재',name:'4각 박스 50mm',spec:'',unit:'개',cost:450},
+  {id:'p13',cat:'배관자재',name:'2구 박스',spec:'',unit:'개',cost:280},
+  {id:'p14',cat:'배관자재',name:'CD새들 16mm',spec:'',unit:'개',cost:130},
+  {id:'p15',cat:'배관자재',name:'CD커넥터 16mm',spec:'',unit:'개',cost:180},
+  {id:'p16',cat:'배관자재',name:'부싱 16mm',spec:'',unit:'개',cost:90},
+  {id:'p17',cat:'배관자재',name:'로크너트 16mm',spec:'',unit:'개',cost:120},
+  // 스위치/콘센트/조명
+  {id:'s01',cat:'스위치/콘센트/조명',name:'단로기 1구',spec:'16A',unit:'개',cost:1100},
+  {id:'s02',cat:'스위치/콘센트/조명',name:'단로기 2구',spec:'16A',unit:'개',cost:1800},
+  {id:'s03',cat:'스위치/콘센트/조명',name:'콘센트 2구',spec:'16A',unit:'개',cost:1400},
+  {id:'s04',cat:'스위치/콘센트/조명',name:'콘센트 2구 접지',spec:'16A',unit:'개',cost:2000},
+  {id:'s05',cat:'스위치/콘센트/조명',name:'콘센트 3구 접지',spec:'16A',unit:'개',cost:2800},
+  {id:'s06',cat:'스위치/콘센트/조명',name:'방수콘센트 1구',spec:'IP44',unit:'개',cost:4500},
+  {id:'s07',cat:'스위치/콘센트/조명',name:'LED 직부등 10W',spec:'주광색 6500K',unit:'개',cost:5200},
+  {id:'s08',cat:'스위치/콘센트/조명',name:'LED 직부등 15W',spec:'주광색 6500K',unit:'개',cost:7500},
+  {id:'s09',cat:'스위치/콘센트/조명',name:'LED 직부등 20W',spec:'주광색 6500K',unit:'개',cost:9000},
+  {id:'s10',cat:'스위치/콘센트/조명',name:'LED 사각 직부등 20W',spec:'주광색 6500K',unit:'개',cost:11500},
+  {id:'s11',cat:'스위치/콘센트/조명',name:'LED 매입등 7W',spec:'주광색 6500K',unit:'개',cost:4200},
+  {id:'s12',cat:'스위치/콘센트/조명',name:'LED 매입등 12W',spec:'주광색 6500K',unit:'개',cost:6500},
+  {id:'s13',cat:'스위치/콘센트/조명',name:'LED 주방등 20W',spec:'주광색 6500K',unit:'개',cost:11000},
+  {id:'s14',cat:'스위치/콘센트/조명',name:'LED 주방등 30W',spec:'주광색 6500K',unit:'개',cost:17000},
+  {id:'s15',cat:'스위치/콘센트/조명',name:'방수 직부등 20W',spec:'IP65',unit:'개',cost:13000},
+]
+const CATS=['전체','전선/케이블','분전함/차단기','배관자재','스위치/콘센트/조명']
+// 관리자가 수정한 카탈로그 가격 (localStorage 저장)
+function getCatalogPrices(){return JSON.parse(localStorage.getItem('doa_catalog_prices')||'{}')}
+function setCatalogPrice(id,cost){const p=getCatalogPrices();p[id]=cost;localStorage.setItem('doa_catalog_prices',JSON.stringify(p))}
+function getCost(item){const p=getCatalogPrices();return p[item.id]??item.cost}
+
 let me=JSON.parse(localStorage.getItem('doa_user')||'null')
 let screen='home',sites=[],members=[],schedules=[],quotes=[],sFilter='전체',wOff=0,editId=null,qNum=0
 let attY=new Date().getFullYear(),attMo=new Date().getMonth()
 let adminAttMemberId=null,adminAttMemberName=''
+let qCart={},qMarginPct=45,qCatTab='전체',qCustomNum=0
 
 // ── 초기화
 window.addEventListener('DOMContentLoaded',async()=>{
@@ -913,56 +1063,246 @@ async function rQuotes(){
   quotes=qr.data||[];sites=sr.data||[]
   document.getElementById('hdr-s').textContent=`총 ${quotes.length}건`
   document.getElementById('main').innerHTML=`
-    ${quotes.length?quotes.map(q=>`<div class="li" onclick="viewQ('${q.id}')"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="lt">${q.site?.name||q.client||'견적서'}</div><div class="ls">${q.created_at?.slice(0,10)||''}</div></div><div style="text-align:right"><div style="font-size:15px;font-weight:700;color:var(--navy)">${(q.total||0).toLocaleString()}원</div><span class="badge ${q.status==='완료'?'bd':q.status==='발송'?'bi':'bw'}">${q.status}</span></div></div></div>`).join(''):`<div class="empty"><div class="ei">📄</div><div style="font-size:14px">견적서가 없어요</div></div>`}
+    ${quotes.length?quotes.map(q=>`
+      <div class="li" onclick="viewQ('${q.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="lt">${q.site?.name||q.client||'견적서'}</div>
+            <div class="ls">${q.created_at?.slice(0,10)||''} · ${(q.items||[]).length}개 품목</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:15px;font-weight:700;color:var(--navy)">${(q.total||0).toLocaleString()}원</div>
+            <span class="badge ${q.status==='완료'?'bd':q.status==='발송'?'bi':'bw'}">${q.status}</span>
+          </div>
+        </div>
+      </div>`).join(''):`<div class="empty"><div class="ei">📄</div><div style="font-size:14px">견적서가 없어요</div><div style="font-size:12px;margin-top:6px">+ 버튼으로 자재를 선택해 견적서를 만들어 보세요</div></div>`}
   `
 }
+
+// ── 카탈로그 오버레이 열기
 function showQuoteForm(){
-  qNum=0
-  openSheet(`<div class="st">새 견적서</div>
-    <div class="fg"><label class="fl">현장</label><select class="fi" id="f-qs" style="background:#fff"><option value="">선택 (선택사항)</option>${sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div>
-    <div class="fg"><label class="fl">발주처</label><input class="fi" id="f-qc" placeholder="발주처명"></div>
-    <div id="qitems"></div>
-    <button onclick="addQI()" style="width:100%;padding:10px;border:.5px dashed var(--border);border-radius:8px;background:none;color:var(--blue);font-size:13px;font-weight:500;cursor:pointer;margin-bottom:12px;font-family:inherit">+ 품목 추가</button>
-    <button class="btn bp" onclick="saveQ()">견적서 저장</button>`)
-  addQI();addQI();addQI()
+  qCart={};qMarginPct=45;qCatTab='전체';qCustomNum=0
+  const ov=document.getElementById('qoverlay')
+  // 현장 목록 채우기
+  const sel=document.getElementById('qo-site')
+  sel.innerHTML='<option value="">선택 (선택사항)</option>'+sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')
+  // 마진 초기화
+  document.getElementById('qo-margin').value=45
+  document.getElementById('qo-margin-val').textContent='+45%'
+  document.getElementById('qo-client').value=''
+  document.getElementById('qo-search').value=''
+  // 카테고리 탭 렌더
+  document.getElementById('qo-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===qCatTab?' on':''}" onclick="setQCat('${c}')">${c}</button>`).join('')
+  renderQItems()
+  updateQSummary()
+  ov.classList.add('on')
 }
-function addQI(){
-  qNum++;const n=qNum
-  const d=document.createElement('div');d.id=`qi${n}`;d.style.marginBottom='8px'
-  d.innerHTML=`<div style="display:grid;grid-template-columns:2fr 1fr 1.3fr auto;gap:5px;align-items:center"><input class="fi" placeholder="품명" id="qn${n}"><input class="fi" type="number" placeholder="수량" id="qq${n}" value="1" min="1"><input class="fi" type="number" placeholder="단가(원)" id="qp${n}"><button onclick="document.getElementById('qi${n}').remove()" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:4px;line-height:1">×</button></div>`
-  document.getElementById('qitems').appendChild(d)
-}
-async function saveQ(){
-  const items=[];let total=0
-  document.querySelectorAll('[id^="qi"]').forEach(el=>{
-    const n=el.id.replace('qi','')
-    const name=document.getElementById('qn'+n)?.value?.trim()
-    const qty=parseInt(document.getElementById('qq'+n)?.value||1)
-    const price=parseInt(document.getElementById('qp'+n)?.value||0)
-    if(name&&price>0){items.push({name,qty,price,total:qty*price});total+=qty*price}
+function closeQOverlay(){document.getElementById('qoverlay').classList.remove('on')}
+function setQCat(cat){qCatTab=cat;document.querySelectorAll('.qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===cat));renderQItems()}
+function updateMargin(v){qMarginPct=parseInt(v);document.getElementById('qo-margin-val').textContent=`+${v}%`;renderQItems();updateQSummary()}
+
+function sellPrice(cost){return Math.round(cost*(1+qMarginPct/100)/100)*100}
+
+function renderQItems(){
+  const q=document.getElementById('qo-search').value.trim().toLowerCase()
+  const items=CATALOG.filter(i=>{
+    const catOk=qCatTab==='전체'||i.cat===qCatTab
+    const srchOk=!q||i.name.toLowerCase().includes(q)||i.spec.toLowerCase().includes(q)
+    return catOk&&srchOk
   })
-  if(!items.length){toast('품목과 단가를 입력하세요',true);return}
-  await db.from('quotes').insert({site_id:v('f-qs')||null,client:v('f-qc'),items,total,status:'작성중'})
-  toast('견적서 저장됐어요');closeSheet();rQuotes()
+  const prices=getCatalogPrices()
+  document.getElementById('qo-list').innerHTML=items.map(item=>{
+    const cost=prices[item.id]??item.cost
+    const sell=sellPrice(cost)
+    const inCart=!!qCart[item.id]
+    const qty=qCart[item.id]?.qty||1
+    return `<div class="qo-item${inCart?' selected':''}" id="qi-${item.id}">
+      <div class="qo-item-top" onclick="toggleCart('${item.id}')">
+        <div class="qo-check">${inCart?'✓':''}</div>
+        <div class="qo-meta">
+          <div class="qo-name">${item.name}</div>
+          <div class="qo-spec">${item.spec}${item.spec?' · ':''}${item.unit}</div>
+        </div>
+        <div class="qo-price-col">
+          <div class="qo-sell">${sell.toLocaleString()}원</div>
+          <div class="qo-cost">도매 ${cost.toLocaleString()}원</div>
+        </div>
+      </div>
+      ${inCart?`<div class="qo-qty-row">
+        <label>${item.name} 수량</label>
+        <button onclick="adjQty('${item.id}',-1)">−</button>
+        <input type="number" min="1" value="${qty}" onchange="setQty('${item.id}',this.value)" id="qqty-${item.id}">
+        <span class="qo-unit">${item.unit}</span>
+        <button onclick="adjQty('${item.id}',1)">+</button>
+      </div>`:''}
+    </div>`
+  }).join('')+`
+  <div class="qo-custom">
+    <div class="qo-custom-title">직접 입력 품목</div>
+    <div id="qcustom-list"></div>
+    <button onclick="addCustomItem()" style="width:100%;padding:9px;border:.5px dashed var(--border);border-radius:8px;background:none;color:var(--blue);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">+ 직접 입력 추가</button>
+  </div>`
+  // 직접입력 행 복원
+  renderCustomItems()
 }
+
+function toggleCart(id){
+  if(qCart[id])delete qCart[id];else{const prices=getCatalogPrices();const item=CATALOG.find(i=>i.id===id);qCart[id]={qty:1,cost:prices[id]??item.cost}}
+  renderQItems();updateQSummary()
+}
+function adjQty(id,d){
+  if(!qCart[id])return
+  qCart[id].qty=Math.max(1,(qCart[id].qty||1)+d)
+  document.getElementById('qo-item-top-'+id)
+  const inp=document.getElementById('qqty-'+id);if(inp)inp.value=qCart[id].qty
+  updateQSummary()
+}
+function setQty(id,val){if(qCart[id]){qCart[id].qty=Math.max(1,parseInt(val)||1);updateQSummary()}}
+
+// 직접 입력 품목
+function addCustomItem(){
+  qCustomNum++
+  renderCustomItems()
+}
+function renderCustomItems(){
+  const el=document.getElementById('qcustom-list');if(!el)return
+  if(qCustomNum===0){el.innerHTML='';return}
+  let html=''
+  for(let n=1;n<=qCustomNum;n++){
+    if(document.getElementById(`qcn-${n}`)&&!document.getElementById(`qcn-${n}`).parentElement)continue
+    html+=`<div class="qo-custom-row" id="qcrow-${n}">
+      <input class="fi" placeholder="품명" id="qcn-${n}" style="font-size:13px;padding:8px">
+      <input class="fi" type="number" placeholder="수량" id="qcq-${n}" value="1" min="1" style="font-size:13px;padding:8px">
+      <input class="fi" type="number" placeholder="단가(원)" id="qcp-${n}" style="font-size:13px;padding:8px">
+      <button onclick="removeCustom(${n})" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:4px;line-height:1">×</button>
+    </div>`
+  }
+  el.innerHTML=html
+}
+function removeCustom(n){document.getElementById('qcrow-'+n)?.remove()}
+
+function updateQSummary(){
+  const sel=Object.keys(qCart).length
+  let total=0
+  Object.entries(qCart).forEach(([id,c])=>{total+=sellPrice(c.cost)*(c.qty||1)})
+  document.getElementById('qo-cnt').textContent=sel?`${sel}개 품목 선택됨`:'선택된 품목 없음'
+  document.getElementById('qo-total').textContent=total.toLocaleString()+'원 (VAT별도)'
+}
+
+async function saveQFromCatalog(){
+  const items=[];let total=0
+  // 카탈로그 선택 품목
+  Object.entries(qCart).forEach(([id,c])=>{
+    const item=CATALOG.find(i=>i.id===id);if(!item)return
+    const sell=sellPrice(c.cost);const qty=c.qty||1
+    items.push({id,name:item.name,spec:item.spec,unit:item.unit,qty,cost:c.cost,price:sell,total:sell*qty,margin:qMarginPct})
+    total+=sell*qty
+  })
+  // 직접입력 품목
+  for(let n=1;n<=qCustomNum;n++){
+    const nameEl=document.getElementById('qcn-'+n),qtyEl=document.getElementById('qcq-'+n),priceEl=document.getElementById('qcp-'+n)
+    if(!nameEl)continue
+    const name=nameEl.value.trim(),qty=parseInt(qtyEl?.value||1),price=parseInt(priceEl?.value||0)
+    if(name&&price>0){items.push({name,qty,price,total:qty*price,manual:true});total+=qty*price}
+  }
+  if(!items.length){toast('품목을 하나 이상 선택하거나 입력하세요',true);return}
+  const siteId=document.getElementById('qo-site').value||null
+  const client=document.getElementById('qo-client').value.trim()
+  await db.from('quotes').insert({site_id:siteId,client,items,total,status:'작성중',margin:qMarginPct})
+  toast('견적서 저장됐어요')
+  closeQOverlay()
+  rQuotes()
+}
+
+// ── 견적서 보기
 async function viewQ(id){
   const q=quotes.find(x=>x.id===id);if(!q)return
   const items=q.items||[],vat=Math.round(q.total*.1)
   openSheet(`<div class="st">${q.site?.name||q.client||'견적서'}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--text2)">${q.created_at?.slice(0,10)||''}</span>
+      <span style="font-size:12px;color:var(--text2)">${q.created_at?.slice(0,10)||''} · 마진 ${q.margin||'-'}%</span>
       ${me.isAdmin?`<select onchange="updQS('${q.id}',this.value)" style="border:.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--blue);font-weight:500;background:#fff;font-family:inherit">${['작성중','발송','완료'].map(s=>`<option ${q.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="badge ${q.status==='완료'?'bd':q.status==='발송'?'bi':'bw'}">${q.status}</span>`}
     </div>
     <table class="qt"><thead><tr><th>품명</th><th style="text-align:right">수량</th><th style="text-align:right">단가</th><th style="text-align:right">금액</th></tr></thead>
-    <tbody>${items.map(i=>`<tr><td>${i.name}</td><td style="text-align:right">${i.qty}</td><td style="text-align:right">${i.price.toLocaleString()}</td><td style="text-align:right;font-weight:500">${i.total.toLocaleString()}</td></tr>`).join('')}</tbody></table>
+    <tbody>${items.map(i=>`<tr><td>${i.name}${i.spec?`<div style="font-size:10px;color:#888;margin-top:1px">${i.spec}</div>`:''}</td><td style="text-align:right">${i.qty}${i.unit||''}</td><td style="text-align:right">${(i.price||0).toLocaleString()}</td><td style="text-align:right;font-weight:500">${(i.total||0).toLocaleString()}</td></tr>`).join('')}</tbody></table>
     <div style="background:var(--bg);border-radius:8px;padding:12px 14px;margin-top:10px">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>공급가액</span><span>${q.total.toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:8px"><span>부가세(10%)</span><span>${vat.toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--navy);border-top:.5px solid var(--border);padding-top:8px"><span>합계</span><span>${(q.total+vat).toLocaleString()}원</span></div>
     </div>
+    <button class="btn bp" onclick="printQuotePDF('${q.id}')" style="margin-top:12px">PDF 출력</button>
     ${me.isAdmin?`<button class="btn bg-r" onclick="delQ('${q.id}')">견적서 삭제</button>`:''}
   `)
 }
+
+// ── PDF 출력
+function printQuotePDF(id){
+  const q=quotes.find(x=>x.id===id);if(!q)return
+  const items=q.items||[],vat=Math.round(q.total*.1),grand=q.total+vat
+  const title=q.site?.name||q.client||'견적서'
+  const dateStr=q.created_at?.slice(0,10)||new Date().toISOString().slice(0,10)
+  const pa=document.getElementById('printarea')
+  pa.innerHTML=`
+  <div style="padding:30px 36px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;max-width:800px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1A3A5C;padding-bottom:16px">
+      <div>
+        <div style="font-size:28px;font-weight:800;color:#1A3A5C;letter-spacing:-0.5px">견 적 서</div>
+        <div style="font-size:13px;color:#666;margin-top:4px">작성일: ${dateStr}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:18px;font-weight:700;color:#1A3A5C">도아전기</div>
+        <div style="font-size:12px;color:#666;margin-top:2px">전기공사 전문</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div style="background:#F2F5FA;border-radius:8px;padding:12px 16px">
+        <div style="font-size:11px;color:#758AA0;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">발주처</div>
+        <div style="font-size:16px;font-weight:600;color:#1A3A5C">${q.client||title}</div>
+        ${q.site?.name?`<div style="font-size:12px;color:#666;margin-top:2px">현장: ${q.site.name}</div>`:''}
+      </div>
+      <div style="background:#F2F5FA;border-radius:8px;padding:12px 16px">
+        <div style="font-size:11px;color:#758AA0;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">견적 정보</div>
+        <div style="font-size:13px;color:#333">마진율: <b>${q.margin||'-'}%</b></div>
+        <div style="font-size:13px;color:#333;margin-top:2px">총 품목: <b>${items.length}개</b></div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
+      <thead>
+        <tr style="background:#1A3A5C;color:#fff">
+          <th style="padding:10px 12px;text-align:left;font-weight:600">품명</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;width:80px">규격</th>
+          <th style="padding:10px 12px;text-align:center;font-weight:600;width:60px">단위</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600;width:60px">수량</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600;width:90px">단가</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600;width:100px">금액</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((i,idx)=>`<tr style="background:${idx%2===1?'#F2F5FA':'#fff'}">
+          <td style="padding:9px 12px;border-bottom:.5px solid #DDE6F0">${i.name}</td>
+          <td style="padding:9px 12px;border-bottom:.5px solid #DDE6F0;color:#666;font-size:12px">${i.spec||''}</td>
+          <td style="padding:9px 12px;border-bottom:.5px solid #DDE6F0;text-align:center;color:#666">${i.unit||''}</td>
+          <td style="padding:9px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${i.qty}</td>
+          <td style="padding:9px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${(i.price||0).toLocaleString()}</td>
+          <td style="padding:9px 12px;border-bottom:.5px solid #DDE6F0;text-align:right;font-weight:600">${(i.total||0).toLocaleString()}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end">
+      <div style="min-width:260px">
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;font-size:13px"><span>공급가액</span><span><b>${q.total.toLocaleString()}</b>원</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;font-size:13px;color:#666"><span>부가세 (10%)</span><span>${vat.toLocaleString()}원</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px;font-size:17px;font-weight:800;color:#1A3A5C;background:#EEF4FB;border-radius:8px;margin-top:4px"><span>합 계</span><span>${grand.toLocaleString()}원</span></div>
+      </div>
+    </div>
+    <div style="margin-top:32px;font-size:11px;color:#999;border-top:.5px solid #DDE6F0;padding-top:12px;text-align:center">
+      위와 같이 견적서를 제출합니다. · 도아전기 · 본 견적서는 발행일로부터 30일간 유효합니다.
+    </div>
+  </div>`
+  pa.style.display='block'
+  setTimeout(()=>{window.print();pa.style.display='none';pa.innerHTML=''},300)
+}
+
 async function updQS(id,status){await db.from('quotes').update({status}).eq('id',id);quotes=quotes.map(q=>q.id===id?{...q,status}:q);toast('상태 변경됐어요')}
 async function delQ(id){if(!confirm('삭제할까요?'))return;await db.from('quotes').delete().eq('id',id);toast('삭제했어요');closeSheet();rQuotes()}
 
