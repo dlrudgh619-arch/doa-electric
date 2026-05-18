@@ -264,6 +264,11 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   </div>
 </div>
 
+<!-- 이미지 라이트박스 -->
+<div id="img-lightbox" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;align-items:center;justify-content:center">
+  <img id="img-lightbox-img" style="max-width:100%;max-height:100%;object-fit:contain;padding:12px">
+</div>
+
 <!-- 교육 게시글 작성 오버레이 (관리자 전용) -->
 <div id="edu-overlay" class="full-ov">
   <div class="qo-hdr">
@@ -1550,7 +1555,7 @@ function viewEduPost(id){
     <div class="st">${p.title}</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:14px">${p.author_name} · ${p.created_at?.slice(0,10)||''}</div>
     ${p.content?`<div style="font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;margin-bottom:14px">${p.content}</div>`:''}
-    ${p.images&&p.images.length?`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:14px">${p.images.map(img=>`<img src="${img}" style="width:100%;border-radius:8px;object-fit:cover;aspect-ratio:1" onclick="window.open(this.src,'_blank')">`).join('')}</div>`:''}
+    ${p.images&&p.images.length?`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:14px">${p.images.map(img=>`<img src="${img}" style="width:100%;border-radius:8px;object-fit:cover;aspect-ratio:1" onclick="showImgLightbox(this.src)">`).join('')}</div>`:''}
     ${ytId?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">▶ 유튜브 영상</div><div style="position:relative;padding-bottom:56.25%;height:0;border-radius:10px;overflow:hidden"><iframe src="https://www.youtube.com/embed/${ytId}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen></iframe></div></div>`:''}
     ${p.video_data?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">🎬 ${p.video_name||'동영상'}</div><video controls style="width:100%;border-radius:10px;background:#000" src="${p.video_data}"></video></div>`:''}
     ${me?.isAdmin?`<div style="display:flex;gap:8px;margin-top:4px">
@@ -1558,6 +1563,12 @@ function viewEduPost(id){
       <button class="btn bg-r" onclick="delEduPost('${p.id}')" style="flex:1;border:.5px solid var(--border)">삭제</button>
     </div>`:''}
   `)
+}
+
+function showImgLightbox(src){
+  const lb=document.getElementById('img-lightbox')
+  document.getElementById('img-lightbox-img').src=src
+  lb.style.display='flex'
 }
 
 function extractYtId(url){
