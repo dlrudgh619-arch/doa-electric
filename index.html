@@ -113,9 +113,9 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .mem-att-row:last-child{border-bottom:none}
 .att-bar-wrap{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
 .att-bar-fill{height:100%;background:var(--navy);border-radius:3px}
-/* ── 견적서 작성 오버레이 ── */
-#qoverlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;max-width:430px;left:50%;transform:translateX(-50%);flex-direction:column;overflow:hidden}
-#qoverlay.on{display:flex}
+/* ── 전체화면 오버레이 공통 ── */
+.full-ov{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;max-width:430px;left:50%;transform:translateX(-50%);flex-direction:column;overflow:hidden}
+.full-ov.on{display:flex}
 .qo-hdr{background:var(--navy);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .qo-hdr h2{font-size:16px;font-weight:600;flex:1}
 .qo-back{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit}
@@ -125,29 +125,38 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .qo-tabs::-webkit-scrollbar{display:none}
 .qo-tab{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:.5px solid var(--border);background:#fff;color:var(--text2);font-family:inherit}
 .qo-tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.qo-body{flex:1;overflow-y:auto;padding:10px 12px 10px}
-/* 품목 입력 행 */
-.qi-hd{display:grid;grid-template-columns:2.4fr 1.2fr .8fr .7fr 1.3fr 28px;gap:4px;padding:0 2px;margin-bottom:4px}
-.qi-hd span{font-size:10px;font-weight:600;color:var(--text2);text-align:center}
-.qi-hd span:first-child{text-align:left}
-.qi-row{display:grid;grid-template-columns:2.4fr 1.2fr .8fr .7fr 1.3fr 28px;gap:4px;margin-bottom:5px;align-items:center}
-.qi-inp{width:100%;padding:8px 6px;border:.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;color:var(--text);outline:none;text-align:center;background:#fff}
-.qi-inp:first-child{text-align:left;padding-left:8px}
-.qi-inp:focus{border-color:var(--blue)}
-.qi-del{background:none;border:none;color:#CBD5E1;font-size:18px;cursor:pointer;line-height:1;padding:0;text-align:center}
-.qi-del:active{color:var(--red)}
-.qi-add{width:100%;padding:9px;border:.5px dashed var(--border);border-radius:8px;background:none;color:var(--blue);font-size:13px;font-weight:500;cursor:pointer;margin-top:6px;font-family:inherit}
+.qo-body{flex:1;overflow-y:auto;padding:10px 12px}
+/* 견적 작성 – 카탈로그 품목 행 */
+.qc-item{background:#fff;border:.5px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.qc-item.active{border-color:var(--navy);background:#EEF4FB}
+.qc-meta{flex:1;min-width:0}
+.qc-name{font-size:14px;font-weight:600;color:var(--text)}
+.qc-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.qc-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.qc-price{font-size:12px;color:var(--text2)}
+.qc-qty-wrap{display:flex;align-items:center;gap:5px}
+.qc-qty-wrap button{width:26px;height:26px;border-radius:6px;border:.5px solid var(--border);background:#fff;font-size:15px;cursor:pointer;line-height:1;color:var(--navy);font-family:inherit}
+.qc-qty-wrap input{width:42px;height:26px;border:.5px solid var(--border);border-radius:6px;font-size:13px;text-align:center;font-family:inherit;color:var(--text);outline:none}
+.qc-subtotal{font-size:12px;font-weight:700;color:var(--navy)}
 /* 하단 합계 */
-.qo-foot{flex-shrink:0;background:#fff;border-top:.5px solid var(--border);padding:12px 14px 18px}
+.qo-foot{flex-shrink:0;background:#fff;border-top:.5px solid var(--border);padding:10px 14px 18px}
 .qo-sum-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:13px}
 .qo-sum-label{color:var(--text2)}
 .qo-sum-rate{display:flex;align-items:center;gap:4px}
-.qo-rate-inp{width:40px;padding:3px 5px;border:.5px solid var(--border);border-radius:6px;font-size:12px;text-align:center;font-family:inherit;color:var(--navy);font-weight:600;outline:none}
+.qo-rate-inp{width:38px;padding:3px 4px;border:.5px solid var(--border);border-radius:6px;font-size:12px;text-align:center;font-family:inherit;color:var(--navy);font-weight:600;outline:none}
 .qo-sum-val{font-weight:500;color:var(--text)}
-.qo-divider{border:none;border-top:.5px solid var(--border);margin:6px 0}
-.qo-grand{display:flex;justify-content:space-between;align-items:center;padding:8px 0 10px}
+.qo-divider{border:none;border-top:.5px solid var(--border);margin:5px 0}
+.qo-grand{display:flex;justify-content:space-between;align-items:center;padding:7px 0 10px}
 .qo-grand-label{font-size:15px;font-weight:700;color:var(--navy)}
-.qo-grand-val{font-size:18px;font-weight:800;color:var(--navy)}
+.qo-grand-val{font-size:17px;font-weight:800;color:var(--navy)}
+/* 카탈로그 관리 품목 행 */
+.cm-item{background:#fff;border:.5px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.cm-meta{flex:1;min-width:0}
+.cm-name{font-size:14px;font-weight:600;color:var(--text)}
+.cm-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.cm-price{font-size:14px;font-weight:700;color:var(--navy);text-align:right;flex-shrink:0}
+.cm-del{background:none;border:none;color:#CBD5E1;font-size:20px;cursor:pointer;padding:0 2px;line-height:1}
+.cm-del:active{color:var(--red)}
 /* PDF 인쇄 */
 @media print{body>*{display:none!important}#printarea{display:block!important;position:fixed;inset:0;background:#fff;z-index:9999}}
 #printarea{display:none}
@@ -204,7 +213,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 <div id="printarea"></div>
 
 <!-- 견적서 작성 오버레이 -->
-<div id="qoverlay">
+<div id="qoverlay" class="full-ov">
   <div class="qo-hdr">
     <button class="qo-back" onclick="closeQOverlay()">‹</button>
     <h2>견적서 작성</h2>
@@ -216,7 +225,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
     </div>
   </div>
   <div class="qo-tabs" id="qo-tabs"></div>
-  <div class="qo-body" id="qo-body"></div>
+  <div class="qo-body" id="qo-body" style="padding-bottom:6px"></div>
   <div class="qo-foot">
     <div class="qo-sum-row"><span class="qo-sum-label">재료비 합계</span><span class="qo-sum-val" id="qs-mat">0원</span></div>
     <div class="qo-sum-row">
@@ -234,6 +243,19 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
     <div class="qo-sum-row"><span class="qo-sum-label">부가세 (10%)</span><span class="qo-sum-val" id="qs-vat">0원</span></div>
     <div class="qo-grand"><span class="qo-grand-label">합 계</span><span class="qo-grand-val" id="qs-grand">0원</span></div>
     <button class="btn bp" onclick="saveQFromCatalog()">견적서 저장</button>
+  </div>
+</div>
+
+<!-- 카탈로그 관리 오버레이 (관리자 전용) -->
+<div id="catoverlay" class="full-ov">
+  <div class="qo-hdr">
+    <button class="qo-back" onclick="closeCatalogMgr()">‹</button>
+    <h2>카탈로그 관리</h2>
+  </div>
+  <div class="qo-tabs" id="cat-tabs"></div>
+  <div class="qo-body" id="cat-body" style="padding-bottom:80px"></div>
+  <div style="position:sticky;bottom:0;background:#fff;border-top:.5px solid var(--border);padding:12px 14px 20px;flex-shrink:0">
+    <button class="btn bp" onclick="showAddCatItemSheet()">+ 품목 추가</button>
   </div>
 </div>
 
@@ -1046,122 +1068,147 @@ async function confirmDelEvt(id){
 }
 
 // ══════════════ 견적 ══════════════
+let catalogItems=[], qQtys={}, qCatTab=CATS[0]
+
 async function rQuotes(){
   document.getElementById('hdr-t').textContent='견적서'
   const{data:qr}=await db.from('quotes').select('*').order('created_at',{ascending:false})
   quotes=qr||[]
   document.getElementById('hdr-s').textContent=`총 ${quotes.length}건`
-  document.getElementById('main').innerHTML=quotes.length?quotes.map(q=>`
+  document.getElementById('main').innerHTML=
+    (me.isAdmin?`<button onclick="openCatalogMgr()" style="width:100%;padding:11px;border-radius:10px;border:.5px solid var(--border);background:#fff;color:var(--navy);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;font-family:inherit">📋 카탈로그 관리</button>`:'')
+    +(quotes.length?quotes.map(q=>`
     <div class="li" onclick="viewQ('${q.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="lt">${q.site_name||q.client||'견적서'}</div>
-          <div class="ls">${q.created_at?.slice(0,10)||''} · ${(q.items||[]).length}개 품목</div>
-        </div>
+        <div><div class="lt">${q.site_name||q.client||'견적서'}</div>
+        <div class="ls">${q.created_at?.slice(0,10)||''} · ${(q.items||[]).length}개 품목</div></div>
         <div style="text-align:right">
           <div style="font-size:15px;font-weight:700;color:var(--navy)">${(q.grand||0).toLocaleString()}원</div>
           <span class="badge ${q.status==='완료'?'bd':q.status==='발송'?'bi':'bw'}">${q.status||'작성중'}</span>
         </div>
       </div>
     </div>`).join('')
-    :`<div class="empty"><div class="ei">📄</div><div style="font-size:14px">견적서가 없어요</div><div style="font-size:12px;margin-top:6px">+ 버튼을 눌러 견적서를 작성하세요</div></div>`
+    :`<div class="empty"><div class="ei">📄</div><div style="font-size:14px">견적서가 없어요</div><div style="font-size:12px;margin-top:6px">+ 버튼을 눌러 작성하세요</div></div>`)
 }
 
-// ── 오버레이 열기/닫기
-function showQuoteForm(){
-  qItems={};qCatTab=CATS[0];qItemSeq=0
-  CATS.forEach(c=>{qItems[c]=[]})
+// ══ 카탈로그 관리 (관리자) ══
+let catMgrTab=CATS[0]
+
+async function openCatalogMgr(){
+  const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
+  catalogItems=data||[]
+  catMgrTab=CATS[0]
+  document.getElementById('cat-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===catMgrTab?' on':''}" onclick="setCatMgrTab('${c}')">${c}</button>`).join('')
+  renderCatMgr()
+  document.getElementById('catoverlay').classList.add('on')
+}
+function closeCatalogMgr(){document.getElementById('catoverlay').classList.remove('on')}
+function setCatMgrTab(c){catMgrTab=c;document.querySelectorAll('#cat-tabs .qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c));renderCatMgr()}
+
+function renderCatMgr(){
+  const items=catalogItems.filter(i=>i.cat===catMgrTab)
+  document.getElementById('cat-body').innerHTML=items.length
+    ?items.map(i=>`
+      <div class="cm-item">
+        <div class="cm-meta">
+          <div class="cm-name">${i.name}</div>
+          <div class="cm-sub">${[i.spec,i.unit].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div class="cm-price">${(i.price||0).toLocaleString()}원</div>
+        <button class="cm-del" onclick="deleteCatItem('${i.id}')">×</button>
+      </div>`).join('')
+    :`<div class="empty" style="padding:32px 20px"><div class="ei">📦</div><div style="font-size:13px">품목이 없어요</div><div style="font-size:12px;margin-top:4px">아래 버튼으로 추가하세요</div></div>`
+}
+
+function showAddCatItemSheet(){
+  openSheet(`
+    <div class="st">품목 추가 · ${catMgrTab}</div>
+    <div class="fg"><label class="fl">품명 *</label><input class="fi" id="ci-name" placeholder="예) HIV 2.5sq"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">규격</label><input class="fi" id="ci-spec" placeholder="예) 100m/R"></div>
+      <div class="fg"><label class="fl">단위</label><input class="fi" id="ci-unit" placeholder="예) 롤, 개, m"></div>
+    </div>
+    <div class="fg"><label class="fl">단가 (원) *</label><input class="fi" type="number" id="ci-price" placeholder="0" min="0"></div>
+    <button class="btn bp" onclick="saveCatItem()">추가</button>`)
+  setTimeout(()=>document.getElementById('ci-name')?.focus(),100)
+}
+
+async function saveCatItem(){
+  const name=document.getElementById('ci-name')?.value.trim()
+  const price=parseInt(document.getElementById('ci-price')?.value||0)
+  if(!name){toast('품명을 입력하세요',true);return}
+  if(!price){toast('단가를 입력하세요',true);return}
+  const{data}=await db.from('catalog_items').insert({
+    cat:catMgrTab,name,
+    spec:document.getElementById('ci-spec')?.value.trim()||'',
+    unit:document.getElementById('ci-unit')?.value.trim()||'',
+    price,sort_order:catalogItems.filter(i=>i.cat===catMgrTab).length
+  }).select().single()
+  catalogItems.push(data)
+  toast('추가됐어요');closeSheet();renderCatMgr()
+}
+
+async function deleteCatItem(id){
+  if(!confirm('이 품목을 삭제할까요?'))return
+  await db.from('catalog_items').delete().eq('id',id)
+  catalogItems=catalogItems.filter(i=>i.id!==id)
+  toast('삭제됐어요');renderCatMgr()
+}
+
+// ══ 견적서 작성 ══
+async function showQuoteForm(){
+  const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
+  catalogItems=data||[]
+  qQtys={};qCatTab=CATS[0]
   document.getElementById('qo-site-name').value=''
   document.getElementById('qo-client').value=''
   document.getElementById('qs-tool-rate').value=3
   document.getElementById('qs-margin-rate').value=8
   document.getElementById('qo-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===qCatTab?' on':''}" onclick="setQCat('${c}')">${c}</button>`).join('')
-  renderQBody()
-  calcQ()
+  renderQBody();calcQ()
   document.getElementById('qoverlay').classList.add('on')
 }
 function closeQOverlay(){document.getElementById('qoverlay').classList.remove('on')}
-function setQCat(c){
-  saveCurrentRows()
-  qCatTab=c
-  document.querySelectorAll('.qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c))
-  renderQBody()
-}
+function setQCat(c){qCatTab=c;document.querySelectorAll('#qo-tabs .qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c));renderQBody()}
 
-// ── 현재 탭 입력값 저장
-function saveCurrentRows(){
-  const rows=document.querySelectorAll('.qi-row')
-  const saved=[]
-  rows.forEach(r=>{
-    const id=r.dataset.id
-    const name=document.getElementById('qn-'+id)?.value||''
-    const spec=document.getElementById('qs-'+id)?.value||''
-    const unit=document.getElementById('qu-'+id)?.value||''
-    const qty=document.getElementById('qq-'+id)?.value||''
-    const price=document.getElementById('qp-'+id)?.value||''
-    if(name||price)saved.push({id,name,spec,unit,qty,price})
-  })
-  if(saved.length)qItems[qCatTab]=saved
-}
-
-// ── 품목 행 렌더
 function renderQBody(){
-  const rows=qItems[qCatTab]||[]
-  let html=`<div class="qi-hd"><span>품명</span><span>규격</span><span>단위</span><span>수량</span><span>단가(원)</span><span></span></div>`
-  rows.forEach(r=>{html+=qiRow(r.id,r.name,r.spec,r.unit,r.qty,r.price)})
-  html+=`<button class="qi-add" onclick="addQRow()">+ 품목 추가</button>`
-  document.getElementById('qo-body').innerHTML=html
-}
-function qiRow(id,name='',spec='',unit='',qty='1',price=''){
-  return `<div class="qi-row" data-id="${id}">
-    <input class="qi-inp" id="qn-${id}" placeholder="품명" value="${name}" oninput="calcQ()">
-    <input class="qi-inp" id="qs-${id}" placeholder="규격" value="${spec}">
-    <input class="qi-inp" id="qu-${id}" placeholder="개/m/롤" value="${unit}" style="font-size:11px">
-    <input class="qi-inp" id="qq-${id}" type="number" placeholder="1" value="${qty}" min="1" oninput="calcQ()">
-    <input class="qi-inp" id="qp-${id}" type="number" placeholder="0" value="${price}" min="0" oninput="calcQ()">
-    <button class="qi-del" onclick="delQRow('${id}')">×</button>
-  </div>`
-}
-function addQRow(){
-  saveCurrentRows()
-  qItemSeq++
-  const id='r'+qItemSeq
-  if(!qItems[qCatTab])qItems[qCatTab]=[]
-  qItems[qCatTab].push({id,name:'',spec:'',unit:'',qty:'1',price:''})
-  renderQBody()
-  document.getElementById('qn-'+id)?.focus()
-}
-function delQRow(id){
-  saveCurrentRows()
-  qItems[qCatTab]=(qItems[qCatTab]||[]).filter(r=>r.id!==id)
-  renderQBody()
-  calcQ()
+  const items=catalogItems.filter(i=>i.cat===qCatTab)
+  if(!items.length){
+    document.getElementById('qo-body').innerHTML=`<div class="empty" style="padding:32px 20px"><div class="ei">📦</div><div style="font-size:13px">이 카테고리에 품목이 없어요</div><div style="font-size:12px;margin-top:4px">관리자가 카탈로그에서 먼저 등록해야 해요</div></div>`
+    return
+  }
+  document.getElementById('qo-body').innerHTML=items.map(item=>{
+    const qty=qQtys[item.id]||0,sub=(item.price||0)*qty
+    return `<div class="qc-item${qty>0?' active':''}" id="qc-${item.id}">
+      <div class="qc-meta">
+        <div class="qc-name">${item.name}</div>
+        <div class="qc-sub">${[item.spec,item.unit].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="qc-right">
+        <div class="qc-price">${(item.price||0).toLocaleString()}원/${item.unit||'개'}</div>
+        <div class="qc-qty-wrap">
+          <button onclick="adjQty('${item.id}',-1)">−</button>
+          <input type="number" min="0" value="${qty||''}" placeholder="0"
+            onchange="setQtyVal('${item.id}',this.value)" oninput="setQtyVal('${item.id}',this.value)"
+            style="width:42px;height:26px;border:.5px solid var(--border);border-radius:6px;font-size:13px;text-align:center;font-family:inherit;outline:none">
+          <button onclick="adjQty('${item.id}',1)">+</button>
+        </div>
+        ${qty>0?`<div class="qc-subtotal">${sub.toLocaleString()}원</div>`:''}
+      </div>
+    </div>`
+  }).join('')
 }
 
-// ── 합계 계산
+function adjQty(id,d){qQtys[id]=Math.max(0,(qQtys[id]||0)+d);renderQBody();calcQ()}
+function setQtyVal(id,v){qQtys[id]=Math.max(0,parseInt(v)||0);const el=document.getElementById('qc-'+id);if(el)el.className='qc-item'+(qQtys[id]>0?' active':'');calcQ()}
+
 function calcQ(){
   let mat=0
-  // 현재 탭 화면 값으로 직접 합산
-  document.querySelectorAll('.qi-row').forEach(r=>{
-    const id=r.dataset.id
-    const qty=parseFloat(document.getElementById('qq-'+id)?.value||0)
-    const price=parseFloat(document.getElementById('qp-'+id)?.value||0)
-    mat+=qty*price
-  })
-  // 다른 탭 저장값 합산
-  CATS.forEach(c=>{
-    if(c===qCatTab)return
-    ;(qItems[c]||[]).forEach(r=>{
-      mat+=(parseFloat(r.qty)||0)*(parseFloat(r.price)||0)
-    })
-  })
+  catalogItems.forEach(i=>{mat+=(i.price||0)*(qQtys[i.id]||0)})
   const toolRate=parseFloat(document.getElementById('qs-tool-rate')?.value||0)
   const mgRate=parseFloat(document.getElementById('qs-margin-rate')?.value||0)
-  const tool=Math.round(mat*toolRate/100)
-  const mg=Math.round(mat*mgRate/100)
-  const supply=mat+tool+mg
-  const vat=Math.round(supply*.1)
-  const grand=supply+vat
+  const tool=Math.round(mat*toolRate/100),mg=Math.round(mat*mgRate/100)
+  const supply=mat+tool+mg,vat=Math.round(supply*.1),grand=supply+vat
   document.getElementById('qs-mat').textContent=mat.toLocaleString()+'원'
   document.getElementById('qs-tool').textContent=tool.toLocaleString()+'원'
   document.getElementById('qs-margin').textContent=mg.toLocaleString()+'원'
@@ -1170,53 +1217,30 @@ function calcQ(){
   document.getElementById('qs-grand').textContent=grand.toLocaleString()+'원'
 }
 
-// ── 견적서 저장
 async function saveQFromCatalog(){
-  saveCurrentRows()
-  const allItems=[]
-  let mat=0
-  CATS.forEach(cat=>{
-    ;(qItems[cat]||[]).forEach(r=>{
-      const name=r.name?.trim()
-      const qty=parseFloat(r.qty)||0
-      const price=parseFloat(r.price)||0
-      if(name&&price>0){
-        allItems.push({cat,name,spec:r.spec||'',unit:r.unit||'',qty,price,total:qty*price})
-        mat+=qty*price
-      }
-    })
-  })
-  if(!allItems.length){toast('품목을 하나 이상 입력하세요',true);return}
+  const allItems=[];let mat=0
+  catalogItems.forEach(i=>{const qty=qQtys[i.id]||0;if(qty>0){const total=(i.price||0)*qty;allItems.push({cat:i.cat,name:i.name,spec:i.spec||'',unit:i.unit||'',qty,price:i.price||0,total});mat+=total}})
+  if(!allItems.length){toast('수량을 입력한 품목이 없어요',true);return}
   const toolRate=parseFloat(document.getElementById('qs-tool-rate').value||0)
   const mgRate=parseFloat(document.getElementById('qs-margin-rate').value||0)
-  const tool=Math.round(mat*toolRate/100)
-  const mg=Math.round(mat*mgRate/100)
-  const supply=mat+tool+mg
-  const vat=Math.round(supply*.1)
-  const grand=supply+vat
-  const siteName=document.getElementById('qo-site-name').value.trim()
-  const client=document.getElementById('qo-client').value.trim()
+  const tool=Math.round(mat*toolRate/100),mg=Math.round(mat*mgRate/100)
+  const supply=mat+tool+mg,vat=Math.round(supply*.1),grand=supply+vat
   await db.from('quotes').insert({
-    site_name:siteName,client,items:allItems,
-    mat,tool_rate:toolRate,tool_cost:tool,
-    margin_rate:mgRate,margin_cost:mg,
-    supply,vat,grand,status:'작성중'
+    site_name:document.getElementById('qo-site-name').value.trim(),
+    client:document.getElementById('qo-client').value.trim(),
+    items:allItems,mat,tool_rate:toolRate,tool_cost:tool,
+    margin_rate:mgRate,margin_cost:mg,supply,vat,grand,status:'작성중'
   })
-  toast('견적서 저장됐어요')
-  closeQOverlay()
-  rQuotes()
+  toast('견적서 저장됐어요');closeQOverlay();rQuotes()
 }
 
-// ── 견적서 보기
 async function viewQ(id){
   const q=quotes.find(x=>x.id===id);if(!q)return
-  const items=q.items||[]
-  // 카테고리별 그룹
-  const grouped={}
+  const items=q.items||[],grouped={}
   items.forEach(i=>{if(!grouped[i.cat])grouped[i.cat]=[];grouped[i.cat].push(i)})
-  const tableRows=CATS.map(cat=>{
+  const tRows=CATS.map(cat=>{
     const rows=grouped[cat]||[];if(!rows.length)return''
-    return `<tr style="background:#E8F0F8"><td colspan="5" style="padding:7px 10px;font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.04em">${cat}</td></tr>`
+    return `<tr style="background:#E8F0F8"><td colspan="5" style="padding:7px 10px;font-size:11px;font-weight:700;color:var(--navy)">${cat}</td></tr>`
       +rows.map(i=>`<tr><td style="padding:7px 10px">${i.name}${i.spec?`<div style="font-size:10px;color:#888">${i.spec}</div>`:''}</td><td style="padding:7px 10px;text-align:center;color:#666">${i.unit||''}</td><td style="padding:7px 10px;text-align:right">${i.qty}</td><td style="padding:7px 10px;text-align:right">${(i.price||0).toLocaleString()}</td><td style="padding:7px 10px;text-align:right;font-weight:600">${(i.total||0).toLocaleString()}</td></tr>`).join('')
   }).join('')
   openSheet(`
@@ -1227,7 +1251,7 @@ async function viewQ(id){
     </div>
     <table class="qt" style="font-size:12px">
       <thead><tr><th>품명</th><th style="text-align:center">단위</th><th style="text-align:right">수량</th><th style="text-align:right">단가</th><th style="text-align:right">금액</th></tr></thead>
-      <tbody>${tableRows}</tbody>
+      <tbody>${tRows}</tbody>
     </table>
     <div style="background:var(--bg);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:13px">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">재료비 합계</span><span>${(q.mat||0).toLocaleString()}원</span></div>
@@ -1242,91 +1266,44 @@ async function viewQ(id){
   `)
 }
 
-// ── PDF 출력
 function printQuotePDF(id){
   const q=quotes.find(x=>x.id===id);if(!q)return
-  const items=q.items||[]
-  const dateStr=q.created_at?.slice(0,10)||new Date().toISOString().slice(0,10)
-  const grouped={}
+  const items=q.items||[],dateStr=q.created_at?.slice(0,10)||new Date().toISOString().slice(0,10),grouped={}
   items.forEach(i=>{if(!grouped[i.cat])grouped[i.cat]=[];grouped[i.cat].push(i)})
-  const tableRows=CATS.map(cat=>{
+  const tRows=CATS.map(cat=>{
     const rows=grouped[cat]||[];if(!rows.length)return''
-    return `<tr style="background:#E8F0F8"><td colspan="6" style="padding:7px 12px;font-size:11px;font-weight:700;color:#1A3A5C;letter-spacing:.04em">${cat}</td></tr>`
-      +rows.map((i,idx)=>`<tr style="background:${idx%2===1?'#F8FAFC':'#fff'}">
-        <td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0">${i.name}</td>
-        <td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;color:#666;font-size:11px">${i.spec||''}</td>
-        <td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:center;color:#666">${i.unit||''}</td>
-        <td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${i.qty}</td>
-        <td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${(i.price||0).toLocaleString()}</td>
-        <td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right;font-weight:600">${(i.total||0).toLocaleString()}</td>
-      </tr>`).join('')
+    return `<tr style="background:#E8F0F8"><td colspan="6" style="padding:7px 12px;font-size:11px;font-weight:700;color:#1A3A5C">${cat}</td></tr>`
+      +rows.map((i,idx)=>`<tr style="background:${idx%2?'#F8FAFC':'#fff'}"><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0">${i.name}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;color:#666;font-size:11px">${i.spec||''}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:center;color:#666">${i.unit||''}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${i.qty}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${(i.price||0).toLocaleString()}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right;font-weight:600">${(i.total||0).toLocaleString()}</td></tr>`).join('')
   }).join('')
-  const pa=document.getElementById('printarea')
-  pa.innerHTML=`<div style="padding:28px 36px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;font-size:13px">
-    <!-- 헤더 -->
+  document.getElementById('printarea').innerHTML=`<div style="padding:28px 36px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;font-size:13px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #1A3A5C;padding-bottom:14px;margin-bottom:18px">
-      <div>
-        <div style="font-size:30px;font-weight:900;color:#1A3A5C;letter-spacing:-1px">견 적 서</div>
-        <div style="font-size:12px;color:#888;margin-top:4px">작성일: ${dateStr}</div>
-      </div>
-      <div style="text-align:right;line-height:1.7">
-        <div style="font-size:16px;font-weight:800;color:#1A3A5C">도아랩</div>
-        <div style="font-size:11px;color:#555">대표: 이경호</div>
-        <div style="font-size:11px;color:#555">사업자: 259-27-01423</div>
-        <div style="font-size:11px;color:#555">HP: 010-9436-8611</div>
-      </div>
+      <div><div style="font-size:30px;font-weight:900;color:#1A3A5C;letter-spacing:-1px">견 적 서</div><div style="font-size:12px;color:#888;margin-top:4px">작성일: ${dateStr}</div></div>
+      <div style="text-align:right;line-height:1.8"><div style="font-size:16px;font-weight:800;color:#1A3A5C">도아랩</div><div style="font-size:11px;color:#555">대표: 이경호</div><div style="font-size:11px;color:#555">사업자등록번호: 259-27-01423</div><div style="font-size:11px;color:#555">HP: 010-9436-8611</div></div>
     </div>
-    <!-- 발주처 / 현장 -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
-      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px">
-        <div style="font-size:10px;color:#758AA0;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">발주처</div>
-        <div style="font-size:15px;font-weight:700;color:#1A3A5C">${q.client||'-'}</div>
-        ${q.site_name?`<div style="font-size:11px;color:#666;margin-top:2px">현장: ${q.site_name}</div>`:''}
-      </div>
-      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px">
-        <div style="font-size:10px;color:#758AA0;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">회사 정보</div>
-        <div style="font-size:11px;color:#444;line-height:1.7">
-          주소: 청천동 59-1 신한빌딩 103호<br>
-          국민은행: 466801-04-402993
-        </div>
-      </div>
+      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px"><div style="font-size:10px;color:#758AA0;font-weight:700;letter-spacing:.06em;margin-bottom:5px">발주처</div><div style="font-size:15px;font-weight:700;color:#1A3A5C">${q.client||'-'}</div>${q.site_name?`<div style="font-size:11px;color:#666;margin-top:2px">현장: ${q.site_name}</div>`:''}</div>
+      <div style="background:#F2F5FA;border-radius:8px;padding:11px 14px"><div style="font-size:10px;color:#758AA0;font-weight:700;letter-spacing:.06em;margin-bottom:5px">회사 정보</div><div style="font-size:11px;color:#444;line-height:1.8">주소: 청천동 59-1 신한빌딩 103호<br>국민은행: 466801-04-402993</div></div>
     </div>
-    <!-- 품목 테이블 -->
     <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
-      <thead>
-        <tr style="background:#1A3A5C;color:#fff">
-          <th style="padding:9px 12px;text-align:left;font-weight:600">품명</th>
-          <th style="padding:9px 12px;text-align:left;font-weight:600;width:80px">규격</th>
-          <th style="padding:9px 12px;text-align:center;font-weight:600;width:50px">단위</th>
-          <th style="padding:9px 12px;text-align:right;font-weight:600;width:50px">수량</th>
-          <th style="padding:9px 12px;text-align:right;font-weight:600;width:90px">단가</th>
-          <th style="padding:9px 12px;text-align:right;font-weight:600;width:100px">금액</th>
-        </tr>
-      </thead>
-      <tbody>${tableRows}</tbody>
+      <thead><tr style="background:#1A3A5C;color:#fff"><th style="padding:9px 12px;text-align:left">품명</th><th style="padding:9px 12px;text-align:left;width:80px">규격</th><th style="padding:9px 12px;text-align:center;width:50px">단위</th><th style="padding:9px 12px;text-align:right;width:50px">수량</th><th style="padding:9px 12px;text-align:right;width:90px">단가</th><th style="padding:9px 12px;text-align:right;width:100px">금액</th></tr></thead>
+      <tbody>${tRows}</tbody>
     </table>
-    <!-- 합계 -->
-    <div style="display:flex;justify-content:flex-end">
-      <div style="min-width:280px;font-size:13px">
-        <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>재료비 합계</span><span>${(q.mat||0).toLocaleString()}원</span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>공구손료 (${q.tool_rate||0}%)</span><span>${(q.tool_cost||0).toLocaleString()}원</span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>업체마진 (${q.margin_rate||0}%)</span><span>${(q.margin_cost||0).toLocaleString()}원</span></div>
-        <div style="display:flex;justify-content:space-between;padding:6px 10px;border-top:.5px solid #DDE6F0;margin-top:4px"><span>공급가액</span><span><b>${(q.supply||0).toLocaleString()}원</b></span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>부가세 (10%)</span><span>${(q.vat||0).toLocaleString()}원</span></div>
-        <div style="display:flex;justify-content:space-between;padding:11px 12px;font-size:16px;font-weight:800;color:#1A3A5C;background:#EEF4FB;border-radius:8px;margin-top:6px"><span>합 계</span><span>${(q.grand||0).toLocaleString()}원</span></div>
-      </div>
-    </div>
-    <!-- 하단 -->
-    <div style="margin-top:30px;border-top:.5px solid #DDE6F0;padding-top:12px;font-size:11px;color:#999;text-align:center">
-      위와 같이 견적서를 제출합니다. &nbsp;·&nbsp; 도아랩 &nbsp;·&nbsp; 본 견적서는 발행일로부터 30일간 유효합니다.
-    </div>
+    <div style="display:flex;justify-content:flex-end"><div style="min-width:280px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>재료비 합계</span><span>${(q.mat||0).toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>공구손료 (${q.tool_rate||0}%)</span><span>${(q.tool_cost||0).toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>업체마진 (${q.margin_rate||0}%)</span><span>${(q.margin_cost||0).toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 10px;border-top:.5px solid #DDE6F0;margin-top:4px"><span>공급가액</span><span><b>${(q.supply||0).toLocaleString()}원</b></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>부가세 (10%)</span><span>${(q.vat||0).toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 12px;font-size:16px;font-weight:800;color:#1A3A5C;background:#EEF4FB;border-radius:8px;margin-top:6px"><span>합 계</span><span>${(q.grand||0).toLocaleString()}원</span></div>
+    </div></div>
+    <div style="margin-top:30px;border-top:.5px solid #DDE6F0;padding-top:12px;font-size:11px;color:#999;text-align:center">위와 같이 견적서를 제출합니다. · 도아랩 · 본 견적서는 발행일로부터 30일간 유효합니다.</div>
   </div>`
-  pa.style.display='block'
-  setTimeout(()=>{window.print();pa.style.display='none';pa.innerHTML=''},200)
+  document.getElementById('printarea').style.display='block'
+  setTimeout(()=>{window.print();document.getElementById('printarea').style.display='none';document.getElementById('printarea').innerHTML=''},200)
 }
 
 async function updQS(id,status){await db.from('quotes').update({status}).eq('id',id);quotes=quotes.map(q=>q.id===id?{...q,status}:q);toast('상태 변경됐어요')}
-async function delQ(id){if(!confirm('삭제할까요?'))return;await db.from('quotes').delete().eq('id',id);toast('삭제했어요');closeSheet();rQuotes()}
+async function delQ(id){if(!confirm('삭제할까요?'))return;await db.from('quotes').delete().eq('id',id);toast('삭제됐어요');closeSheet();rQuotes()}
 
 // ══════════════ 팀원 + 근태 ══════════════
 async function rTeam(){
