@@ -554,27 +554,42 @@ async function rHome(){
 
 // ══════════════ 현장 ══════════════
 async function rSites(){
-  const{data}=await db.from('sites').select('*').order('created_at',{ascending:false})
+  const[{data},{data:memoCounts}]=await Promise.all([
+    db.from('sites').select('*').order('created_at',{ascending:false}),
+    db.from('site_memos').select('site_id')
+  ])
   sites=data||[]
+  const memoSet=new Set((memoCounts||[]).map(m=>m.site_id))
   document.getElementById('hdr-t').textContent='현장 관리'
   document.getElementById('hdr-s').textContent=`총 ${sites.length}개`
   const fl=['전체','진행중','대기중','완료','보류']
   const ft=sFilter==='전체'?sites:sites.filter(s=>s.status===sFilter)
   document.getElementById('main').innerHTML=`
     <div class="fc">${fl.map(f=>`<div class="fcc ${sFilter===f?'on':''}" onclick="setSF('${f}')">${f}</div>`).join('')}</div>
-    ${ft.length?ft.map(s=>`
+    ${ft.length?ft.map(s=>{
+      const hasMemo=memoSet.has(s.id)
+      const addrEsc=(s.address||'').replace(/'/g,'').replace(/"/g,'')
+      return `
       <div class="li">
         <div><div class="lt">${s.name}</div>
-        <div class="ls">${s.client||'발주처 미입력'}${s.address?' · '+s.address:''}</div>
+        <div class="ls" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span>${s.client||'발주처 미입력'}</span>
+          ${s.address?`<span style="display:flex;align-items:center;gap:3px">${s.address}<button onclick="copyAddr('${addrEsc}')" style="background:none;border:none;cursor:pointer;padding:0;font-size:12px;color:var(--blue);line-height:1" title="주소 복사">📋</button></span>`:''}
+        </div>
         <div class="lm"><span class="badge ${bc(s.status)}">${s.status}</span>${s.start_date?`<span class="ls">${s.start_date}${s.end_date?' ~ '+s.end_date:''}</span>`:''}</div></div>
         <div class="la">
           <button class="bs" onclick="openSiteFiles('${s.id}','${s.name.replace(/'/g,'')}')">📷 사진</button>
           <button class="bs" onclick="openMaterials('${s.id}','${s.name.replace(/'/g,'')}')">📦 자재</button>
-          <button class="bs" onclick="openMemos('${s.id}','${s.name.replace(/'/g,'')}')">💬 메모</button>
+          <button class="bs" onclick="openMemos('${s.id}','${s.name.replace(/'/g,'')}')" style="${hasMemo?'background:#DBEAFE;color:#1D4ED8;border-color:#93C5FD;font-weight:600':''}">💬 메모${hasMemo?' ●':''}</button>
           ${me.isAdmin?`<button class="bs" onclick="editSite('${s.id}')">✏️ 수정</button><button class="bs" style="color:var(--red)" onclick="delSite('${s.id}')">삭제</button>`:''}
         </div>
-      </div>`).join(''):`<div class="empty"><div class="ei">📍</div><div style="font-size:14px">현장이 없어요</div></div>`}
+      </div>`}).join(''):`<div class="empty"><div class="ei">📍</div><div style="font-size:14px">현장이 없어요</div></div>`}
   `
+}
+function copyAddr(addr){
+  navigator.clipboard.writeText(addr).then(()=>toast('주소가 복사됐어요')).catch(()=>{
+    const el=document.createElement('textarea');el.value=addr;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('주소가 복사됐어요')
+  })
 }
 function setSF(f){sFilter=f;rSites()}
 
