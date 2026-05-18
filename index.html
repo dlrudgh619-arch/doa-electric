@@ -114,7 +114,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .att-bar-wrap{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
 .att-bar-fill{height:100%;background:var(--navy);border-radius:3px}
 /* ── 전체화면 오버레이 공통 ── */
-.full-ov{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;max-width:430px;left:50%;transform:translateX(-50%);flex-direction:column;overflow:hidden}
+.full-ov{display:none;position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,430px);background:var(--bg);z-index:250;flex-direction:column;overflow:hidden}
 .full-ov.on{display:flex}
 .qo-hdr{background:var(--navy);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .qo-hdr h2{font-size:16px;font-weight:600;flex:1}
@@ -459,7 +459,7 @@ async function go(s){
   screen=s
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'))
   document.getElementById('nb-'+s).classList.add('on')
-  document.getElementById('fab').style.display=me?.isAdmin&&['sites','team','quotes'].includes(s)?'flex':'none'
+  document.getElementById('fab').style.display=(s==='quotes'&&me)||(me?.isAdmin&&['sites','team'].includes(s))?'flex':'none'
   await render()
 }
 async function render(){
@@ -1285,11 +1285,11 @@ function printQuotePDF(id){
     return `<tr style="background:#E8F0F8"><td colspan="6" style="padding:7px 12px;font-size:11px;font-weight:700;color:#1A3A5C">${cat}</td></tr>`
       +rows.map((i,idx)=>`<tr style="background:${idx%2?'#F8FAFC':'#fff'}"><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0">${i.name}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;color:#666;font-size:11px">${i.spec||''}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:center;color:#666">${i.unit||''}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${i.qty}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right">${(i.price||0).toLocaleString()}</td><td style="padding:8px 12px;border-bottom:.5px solid #DDE6F0;text-align:right;font-weight:600">${(i.total||0).toLocaleString()}</td></tr>`).join('')
   }).join('')
-  document.getElementById('printarea').innerHTML=`<div style="padding:28px 36px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;font-size:13px">
+  const bodyHtml=`<div style="padding:28px 32px;font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111;font-size:13px;max-width:800px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #1A3A5C;padding-bottom:14px;margin-bottom:18px">
       <div><div style="font-size:30px;font-weight:900;color:#1A3A5C;letter-spacing:-1px">견 적 서</div><div style="font-size:12px;color:#888;margin-top:4px">작성일: ${dateStr}</div></div>
       <div style="text-align:right;line-height:1.9">
-        <div style="font-size:16px;font-weight:800;color:#1A3A5C">도아랩  |  대표: 이경호</div>
+        <div style="font-size:15px;font-weight:800;color:#1A3A5C">도아랩  |  대표: 이경호</div>
         <div style="font-size:11px;color:#555">사업자: 259-27-01423</div>
         <div style="font-size:11px;color:#555">HP: 010-9436-8611</div>
         <div style="font-size:11px;color:#555">주소: 청천동 59-1 신한빌딩 103호</div>
@@ -1313,8 +1313,12 @@ function printQuotePDF(id){
     </div></div>
     <div style="margin-top:30px;border-top:.5px solid #DDE6F0;padding-top:12px;font-size:11px;color:#999;text-align:center">위와 같이 견적서를 제출합니다. · 도아랩 · 본 견적서는 발행일로부터 30일간 유효합니다.</div>
   </div>`
-  document.getElementById('printarea').style.display='block'
-  setTimeout(()=>{window.print();document.getElementById('printarea').style.display='none';document.getElementById('printarea').innerHTML=''},200)
+  const fullHtml=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>견적서 - ${q.site_name||q.client||'도아랩'}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#fff;padding:0}@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="background:#1A3A5C;padding:12px 16px;display:flex;justify-content:space-between;align-items:center"><span style="color:#fff;font-size:14px;font-weight:600">견적서 PDF 저장</span><button onclick="window.print()" style="background:#fff;color:#1A3A5C;border:none;border-radius:8px;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🖨️ 인쇄 / PDF 저장</button></div>${bodyHtml}</body></html>`
+  const blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const a=document.createElement('a')
+  a.href=url;a.target='_blank';a.click()
+  setTimeout(()=>URL.revokeObjectURL(url),60000)
 }
 
 async function updQS(id,status){await db.from('quotes').update({status}).eq('id',id);quotes=quotes.map(q=>q.id===id?{...q,status}:q);toast('상태 변경됐어요')}
