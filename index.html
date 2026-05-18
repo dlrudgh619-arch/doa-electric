@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="도아전기">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1A3A5C">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <title>도아전기</title>
 <style>
@@ -262,7 +262,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))
 }
 const SURL='https://rqxzazdpduosdjfikaon.supabase.co'
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxeHphemRwZHVvc2RqZmlrYW9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5OTU2MzEsImV4cCI6MjA5NDU3MTYzMX0.qQsaX18gZv9rv2LwXT6hp22fRrG6-Gu4na-HDGoAssk'
