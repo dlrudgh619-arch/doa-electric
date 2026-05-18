@@ -491,7 +491,13 @@ function setupRealtime(){
       if(p.new.is_checked!==p.old?.is_checked)
         pushNotif('📦 자재 체크',`'${p.new.name}' ${p.new.is_checked?'완료 처리됐어요':'미완료로 변경됐어요'}`)
     })
-    .subscribe()
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED')console.log('[Realtime] 연결됨')
+      else if(status==='CLOSED'||status==='CHANNEL_ERROR'){
+        console.warn('[Realtime] 재연결 시도...')
+        setTimeout(setupRealtime,3000)
+      }
+    })
 }
 async function enableNotif(){
   if(!('Notification' in window)){toast('이 브라우저는 알림을 지원하지 않아요',true);return}
@@ -501,14 +507,17 @@ async function enableNotif(){
 }
 function notifSettingCard(){
   const s='Notification' in window?Notification.permission:'unsupported'
-  const statusMap={granted:['#D1FAE5','#065F46','✅ 켜짐'],denied:['#FEE2E2','#991B1B','🚫 차단'],default:['#FEF3C7','#92400E','🔕 꺼짐'],unsupported:['#F1F5F9','#64748B','⚠️ 미지원']}
+  const statusMap={granted:['#D1FAE5','#065F46','✅ 켜짐'],denied:['#FEE2E2','#991B1B','🚫 차단됨'],default:['#FEF3C7','#92400E','🔕 꺼짐'],unsupported:['#F1F5F9','#64748B','⚠️ 미지원']}
   const[bg,fg,label]=statusMap[s]||statusMap.unsupported
-  return `<div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer" onclick="${s==='default'?'enableNotif()':s==='denied'?'toast(\'브라우저 설정 > 알림 > 도아전기 허용으로 변경해주세요\',true)':''}">
-    <div>
-      <div style="font-size:14px;font-weight:600;color:var(--navy)">🔔 푸시 알림 설정</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:3px">${s==='granted'?'현장 사진·자재·메모 업데이트 알림 수신 중':s==='denied'?'브라우저 설정에서 알림을 허용해주세요':s==='default'?'탭하면 알림을 켤 수 있어요':'이 브라우저는 알림을 지원하지 않아요'}</div>
+  const desc={granted:'현장 사진·자재·메모 업데이트 알림 수신 중',denied:'브라우저 설정 > 사이트 설정 > 알림에서 허용해주세요',default:'아래 버튼을 눌러 알림을 켜주세요',unsupported:'이 브라우저는 알림을 지원하지 않아요'}
+  return `<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${s==='granted'?'10':'4'}px">
+      <div style="font-size:14px;font-weight:600;color:var(--navy)">🔔 푸시 알림</div>
+      <span style="background:${bg};color:${fg};padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${label}</span>
     </div>
-    <span style="background:${bg};color:${fg};padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;margin-left:8px">${label}</span>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${desc[s]||''}</div>
+    ${s==='granted'?`<button onclick="pushNotif('🔔 테스트 알림','알림이 정상적으로 작동하고 있어요!')" style="width:100%;padding:10px;border-radius:8px;border:.5px solid var(--border);background:var(--bg);color:var(--navy);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">📣 테스트 알림 보내기</button>`:
+    s==='default'?`<button onclick="enableNotif()" style="width:100%;padding:10px;border-radius:8px;background:var(--navy);color:#fff;border:none;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">알림 켜기</button>`:''}
   </div>`
 }
 
@@ -640,7 +649,7 @@ function renderPhotos(siteId,siteName,selMode,selected){
     html+=`<div style="position:relative;cursor:pointer" onclick="${selMode?`togglePhotoSel('${siteId}','${siteName}',${i},[${selected.join(',')}])`:`viewPhoto(${i},'${siteId}','${(f.file_name||'사진').replace(/'/g,'')}')`}">
       <img class="photo-thumb" src="${f.file_data}" style="opacity:${selMode&&!sel?0.5:1}">
       ${selMode?`<div style="position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;background:${sel?'var(--blue)':'rgba(255,255,255,.85)'};border:2px solid ${sel?'var(--blue)':'#ccc'};display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700">${sel?'✓':''}</div>`:''}
-      ${me.isAdmin&&!selMode?`<button onclick="event.stopPropagation();delFile('${f.id}','${siteId}','${siteName}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer">×</button>`:''}
+      ${!selMode?`<button onclick="event.stopPropagation();delFile('${f.id}','${siteId}','${siteName}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer">×</button>`:''}
     </div>`
   })
   html+='</div>'
@@ -747,7 +756,7 @@ function renderMats(siteId,siteName,mats){
           <div style="font-size:14px;font-weight:500">${m.name}</div>
           ${m.quantity?`<div style="font-size:12px;color:var(--text2)">${m.quantity} ${m.unit||'EA'}${m.notes?' · '+m.notes:''}</div>`:''}
         </div>
-        ${me.isAdmin?`<button onclick="delMat('${m.id}','${siteId}','${siteName}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px;line-height:1">×</button>`:''}
+        <button onclick="delMat('${m.id}','${siteId}','${siteName}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px;line-height:1">×</button>
       </div>`
     })
   }else{
@@ -962,7 +971,7 @@ function renderMemos(siteId,siteName,memos){
           <span style="font-size:11px;color:var(--text2)">${m.created_at?.slice(0,16).replace('T',' ')||''}</span>
         </div>
         <div style="font-size:14px;color:var(--text);line-height:1.5;white-space:pre-wrap">${m.content}</div>
-        ${me.isAdmin||m.member_id===me?.id?`<button onclick="delMemo('${m.id}','${siteId}','${siteName.replace(/'/g,'')}','${JSON.stringify(memos).replace(/'/g,'')}')" style="background:none;border:none;color:#CBD5E1;font-size:11px;cursor:pointer;margin-top:4px;padding:0">삭제</button>`:''}
+        <button onclick="delMemo('${m.id}','${siteId}','${siteName.replace(/'/g,'')}')" style="background:none;border:none;color:#CBD5E1;font-size:11px;cursor:pointer;margin-top:4px;padding:0">삭제</button>
       </div>`).join('')
     :`<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">아직 메모가 없어요</div>`
   document.getElementById('sc').innerHTML=`
