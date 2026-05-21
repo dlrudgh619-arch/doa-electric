@@ -228,6 +228,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
       <div><label class="fl">현장명</label><input class="fi" id="qo-site-name" placeholder="현장명 직접 입력"></div>
       <div><label class="fl">발주처</label><input class="fi" id="qo-client" placeholder="발주처명"></div>
     </div>
+    <div style="margin-top:8px"><label class="fl">견적참고사항</label><textarea class="fi" id="qo-notes" rows="2" placeholder="특이사항, 조건 등 참고사항을 입력하세요..." style="resize:none;line-height:1.6;font-size:13px;color:#c0392b;font-weight:500"></textarea></div>
   </div>
   <div class="qo-tabs" id="qo-tabs"></div>
   <div class="qo-body" id="qo-body" style="padding-bottom:6px"></div>
@@ -1372,6 +1373,7 @@ async function showQuoteForm(){
   qQtys={};qCatTab=CATS[0]
   document.getElementById('qo-site-name').value=''
   document.getElementById('qo-client').value=''
+  document.getElementById('qo-notes').value=''
   document.getElementById('qs-tool-rate').value=3
   document.getElementById('qs-margin-rate').value=8
   document.getElementById('qo-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===qCatTab?' on':''}" onclick="setQCat('${c}')">${c}</button>`).join('')
@@ -1438,6 +1440,7 @@ async function saveQFromCatalog(){
   const{error}=await db.from('quotes').insert({
     site_name:document.getElementById('qo-site-name').value.trim(),
     client:document.getElementById('qo-client').value.trim(),
+    notes:document.getElementById('qo-notes').value.trim()||null,
     items:allItems,mat,tool_rate:toolRate,tool_cost:tool,
     margin_rate:mgRate,margin_cost:mg,supply,vat,grand,
     total:grand,status:'작성중'
@@ -1473,6 +1476,7 @@ async function viewQ(id){
       <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text2)">부가세 (10%)</span><span>${(q.vat||0).toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--navy);border-top:.5px solid var(--border);padding-top:8px"><span>합 계</span><span>${(q.grand||0).toLocaleString()}원</span></div>
     </div>
+    ${q.notes?`<div style="margin-top:14px;padding:11px 13px;background:#FFF5F5;border:.5px solid #FCA5A5;border-radius:8px"><div style="font-size:11px;font-weight:700;color:#c0392b;margin-bottom:4px">📌 견적참고사항</div><div style="font-size:13px;color:#c0392b;white-space:pre-wrap;line-height:1.6">${q.notes}</div></div>`:''}
     <button class="btn bp" onclick="printQuotePDF('${q.id}')" style="margin-top:12px">PDF 출력</button>
     ${me.isAdmin?`<button class="btn bg-r" onclick="delQ('${q.id}')">견적서 삭제</button>`:''}
   `)
@@ -1513,7 +1517,8 @@ function printQuotePDF(id){
       <div style="display:flex;justify-content:space-between;padding:5px 10px;color:#666"><span>부가세 (10%)</span><span>${(q.vat||0).toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;padding:11px 12px;font-size:16px;font-weight:800;color:#1A3A5C;background:#EEF4FB;border-radius:8px;margin-top:6px"><span>합 계</span><span>${(q.grand||0).toLocaleString()}원</span></div>
     </div></div>
-    <div style="margin-top:30px;border-top:.5px solid #DDE6F0;padding-top:12px;font-size:11px;color:#999;text-align:center">위와 같이 견적서를 제출합니다. · 도아랩 · 본 견적서는 발행일로부터 30일간 유효합니다.</div>
+    ${q.notes?`<div style="margin-top:22px;padding:13px 16px;background:#FFF5F5;border:1.5px solid #E74C3C;border-radius:8px"><div style="font-size:12px;font-weight:800;color:#c0392b;margin-bottom:6px">📌 견적참고사항</div><div style="font-size:12px;color:#c0392b;font-weight:600;white-space:pre-wrap;line-height:1.8">${q.notes}</div></div>`:''}
+    <div style="margin-top:22px;border-top:.5px solid #DDE6F0;padding-top:12px;font-size:11px;color:#999;text-align:center">위와 같이 견적서를 제출합니다. · 도아랩 · 본 견적서는 발행일로부터 30일간 유효합니다.</div>
   </div>`
   const fullHtml=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>견적서 - ${q.site_name||q.client||'도아랩'}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#fff;padding:0}@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="background:#1A3A5C;padding:12px 16px;display:flex;justify-content:space-between;align-items:center"><span style="color:#fff;font-size:14px;font-weight:600">견적서 PDF 저장</span><button onclick="window.print()" style="background:#fff;color:#1A3A5C;border:none;border-radius:8px;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🖨️ 인쇄 / PDF 저장</button></div>${bodyHtml}</body></html>`
   const blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'})
