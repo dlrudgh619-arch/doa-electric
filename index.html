@@ -621,12 +621,14 @@ async function rHome(){
 
 // ══════════════ 현장 ══════════════
 async function rSites(){
-  const[{data},{data:memoCounts}]=await Promise.all([
+  const[{data},{data:memoCounts},{data:drawingCounts}]=await Promise.all([
     db.from('sites').select('*').order('created_at',{ascending:false}),
-    db.from('site_memos').select('site_id')
+    db.from('site_memos').select('site_id'),
+    db.from('site_drawings').select('site_id')
   ])
   sites=data||[]
   const memoSet=new Set((memoCounts||[]).map(m=>m.site_id))
+  const drawingSet=new Set((drawingCounts||[]).map(d=>d.site_id))
   document.getElementById('hdr-t').textContent='현장 관리'
   document.getElementById('hdr-s').textContent=`총 ${sites.length}개`
   const fl=['전체','진행중','대기중','완료','보류']
@@ -635,6 +637,7 @@ async function rSites(){
     <div class="fc">${fl.map(f=>`<div class="fcc ${sFilter===f?'on':''}" onclick="setSF('${f}')">${f}</div>`).join('')}</div>
     ${ft.length?ft.map(s=>{
       const hasMemo=memoSet.has(s.id)
+      const hasDrawing=drawingSet.has(s.id)
       const addrEsc=(s.address||'').replace(/'/g,'').replace(/"/g,'')
       return `
       <div class="li">
@@ -648,6 +651,7 @@ async function rSites(){
           <button class="bs" onclick="openSiteFiles('${s.id}','${s.name.replace(/'/g,'')}')">📷 사진</button>
           <button class="bs" onclick="openMaterials('${s.id}','${s.name.replace(/'/g,'')}')">📦 자재</button>
           <button class="bs" onclick="openMemos('${s.id}','${s.name.replace(/'/g,'')}')" style="${hasMemo?'background:#DBEAFE;color:#1D4ED8;border-color:#93C5FD;font-weight:600':''}">💬 메모${hasMemo?' ●':''}</button>
+          <button class="bs" onclick="openDrawings('${s.id}','${s.name.replace(/'/g,'')}')" style="${hasDrawing?'background:#EDE9FE;color:#5B21B6;border-color:#C4B5FD;font-weight:600':''}">📐 도면${hasDrawing?' ●':''}</button>
           ${me.isAdmin?`<button class="bs" onclick="editSite('${s.id}')">✏️ 수정</button><button class="bs" style="color:var(--red)" onclick="delSite('${s.id}')">삭제</button>`:''}
         </div>
       </div>`}).join(''):`<div class="empty"><div class="ei">📍</div><div style="font-size:14px">현장이 없어요</div></div>`}
@@ -1058,6 +1062,103 @@ async function delMemo(id){
   await db.from('site_memos').delete().eq('id',id)
   toast('삭제됐어요')
   await refreshMemos()
+}
+
+// ── 현장 도면
+let _drawingSiteId=null,_drawingSiteName=''
+
+function drawingIcon(name){
+  const ext=(name.split('.').pop()||'').toLowerCase()
+  if(ext==='pdf')return '📄'
+  if(['dwg','dxf','dgn','plt','dwf'].includes(ext))return '📐'
+  if(['png','jpg','jpeg','tif','tiff'].includes(ext))return '🖼️'
+  if(['doc','docx'].includes(ext))return '📝'
+  if(['xls','xlsx'].includes(ext))return '📊'
+  if(['zip','rar','7z'].includes(ext))return '🗜️'
+  return '📎'
+}
+
+async function openDrawings(siteId,siteName){
+  _drawingSiteId=siteId;_drawingSiteName=siteName
+  openSheet(`<div class="st">${siteName} — 도면</div><div class="loading"><div class="spin"></div></div>`)
+  const{data}=await db.from('site_drawings').select('*').eq('site_id',siteId).order('created_at',{ascending:false})
+  renderDrawings(data||[])
+}
+
+function renderDrawings(drawings){
+  const siteId=_drawingSiteId,siteName=_drawingSiteName
+  let html=`<div class="st">${siteName} — 도면 (${drawings.length}개)</div>
+    <div style="margin-bottom:14px">
+      <button class="bs" onclick="document.getElementById('drw-inp-${siteId}').click()" style="background:#EDE9FE;color:#5B21B6;border-color:#C4B5FD;font-weight:600;padding:10px 14px">📐 도면 업로드</button>
+      <input type="file" id="drw-inp-${siteId}" multiple accept=".pdf,.dwg,.dxf,.dgn,.plt,.dwf,.png,.jpg,.jpeg,.tif,.tiff,.doc,.docx,.xls,.xlsx,.zip,.rar" style="display:none" onchange="uploadDrawing('${siteId}','${siteName}',this)">
+      <div id="drw-prog" style="display:none;margin-top:10px"><div class="loading"><div class="spin"></div>업로드 중...</div></div>
+    </div>`
+  if(!drawings.length){
+    html+=`<div style="text-align:center;color:var(--text2);font-size:13px;padding:32px 0"><div style="font-size:36px;margin-bottom:8px">📐</div>등록된 도면이 없어요</div>`
+  } else {
+    drawings.forEach(f=>{
+      const ext=(f.file_name.split('.').pop()||'').toLowerCase()
+      const isPdf=ext==='pdf'
+      html+=`<div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:28px;flex-shrink:0">${drawingIcon(f.file_name)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.file_name}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">${f.uploaded_by||'업로드'} · ${f.created_at?.slice(0,10)||''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <a href="${f.file_data}" download="${f.file_name}" style="flex:1;display:block;padding:9px;background:var(--navy);color:#fff;border-radius:8px;text-align:center;font-size:13px;font-weight:600;text-decoration:none">⬇ 다운로드</a>
+          ${isPdf?`<button onclick="viewDrawingPdf('${f.id}')" style="flex:1;padding:9px;background:#EDE9FE;color:#5B21B6;border:.5px solid #C4B5FD;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">👁 PDF 보기</button>`:''}
+          <button onclick="delDrawing('${f.id}','${siteId}','${siteName}')" style="padding:9px 12px;background:none;border:.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text2);font-family:inherit;cursor:pointer">삭제</button>
+        </div>
+      </div>`
+    })
+  }
+  document.getElementById('sc').innerHTML=html
+}
+
+async function uploadDrawing(siteId,siteName,input){
+  const files=Array.from(input.files);if(!files.length)return
+  const prog=document.getElementById('drw-prog')
+  if(prog)prog.style.display='block'
+  let ok=0
+  for(const f of files){
+    if(f.size>30*1024*1024){toast(`${f.name}: 30MB 이하 파일만 가능해요`,true);continue}
+    const data=await new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(f)})
+    const{error}=await db.from('site_drawings').insert({site_id:siteId,file_name:f.name,file_data:data,file_type:f.type,uploaded_by:me.name})
+    if(!error)ok++
+  }
+  input.value=''
+  toast(ok?`${ok}개 업로드 완료`:'업로드 실패',!ok)
+  openDrawings(siteId,siteName)
+}
+
+let _pdfDrawingData=null
+function viewDrawingPdf(id){
+  // 현재 렌더된 drawings에서 id로 찾기
+  const sc=document.getElementById('sc')
+  const a=sc.querySelector(`a[download]`)
+  // openSheet로 iframe 표시
+  const drawings=Array.from(sc.querySelectorAll('[data-drwid]'))
+  // 대신 DB에서 직접 href 가져오기 - a태그 href 사용
+  const allA=sc.querySelectorAll('a[download]')
+  // 해당 버튼과 같은 행의 a태그를 찾는 방식 대신, 데이터 속성 활용
+  // 이미 렌더된 HTML에서 직접 찾기 어려우므로 DB 재조회
+  db.from('site_drawings').select('file_data,file_name').eq('id',id).single().then(({data})=>{
+    if(!data)return
+    const blob=new Blob([Uint8Array.from(atob(data.file_data.split(',')[1]),c=>c.charCodeAt(0))],{type:'application/pdf'})
+    const url=URL.createObjectURL(blob)
+    window.open(url,'_blank')
+    setTimeout(()=>URL.revokeObjectURL(url),120000)
+  })
+}
+
+async function delDrawing(id,siteId,siteName){
+  if(!confirm('도면을 삭제할까요?'))return
+  await db.from('site_drawings').delete().eq('id',id)
+  toast('삭제됐어요')
+  openDrawings(siteId,siteName)
 }
 
 // ══════════════ 일정 (네이버웍스 스타일) ══════════════
