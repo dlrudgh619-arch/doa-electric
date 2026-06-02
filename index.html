@@ -384,7 +384,7 @@ let me=JSON.parse(localStorage.getItem('doa_user')||'null')
 let screen='home',sites=[],members=[],schedules=[],quotes=[],sFilter='전체',wOff=0,editId=null,qNum=0
 let attY=new Date().getFullYear(),attMo=new Date().getMonth()
 let adminAttMemberId=null,adminAttMemberName=''
-let qItems={},qCatTab='전선/케이블',qItemSeq=0,catalogItems=[],qQtys={},catMgrTab=CATS[0]
+let qItems={},qCatTab='전선/케이블',qItemSeq=0,catalogItems=[],qQtys={},catMgrTab=CATS[0],_qEditId=null
 
 // ── 초기화
 window.addEventListener('DOMContentLoaded',async()=>{
@@ -1481,7 +1481,7 @@ async function showQuoteForm(){
   renderQBody();calcQ()
   document.getElementById('qoverlay').classList.add('on')
 }
-function closeQOverlay(){document.getElementById('qoverlay').classList.remove('on')}
+function closeQOverlay(){document.getElementById('qoverlay').classList.remove('on');_qEditId=null;document.querySelector('#qoverlay h2').textContent='견적서 작성'}
 function setQCat(c){qCatTab=c;document.querySelectorAll('#qo-tabs .qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c));renderQBody()}
 
 function renderQBody(){
@@ -1538,16 +1538,23 @@ async function saveQFromCatalog(){
   const mgRate=parseFloat(document.getElementById('qs-margin-rate').value||0)
   const tool=Math.round(mat*toolRate/100),mg=Math.round(mat*mgRate/100)
   const supply=mat+tool+mg,vat=Math.round(supply*.1),grand=supply+vat
-  const{error}=await db.from('quotes').insert({
+  const payload={
     site_name:document.getElementById('qo-site-name').value.trim(),
     client:document.getElementById('qo-client').value.trim(),
     notes:document.getElementById('qo-notes').value.trim()||null,
     items:allItems,mat,tool_rate:toolRate,tool_cost:tool,
     margin_rate:mgRate,margin_cost:mg,supply,vat,grand,
-    total:grand,status:'작성중'
-  })
+    total:grand
+  }
+  let error
+  if(_qEditId){
+    ({error}=await db.from('quotes').update(payload).eq('id',_qEditId))
+  } else {
+    payload.status='작성중'
+    ;({error}=await db.from('quotes').insert(payload))
+  }
   if(error){toast('저장 실패: '+error.message,true);return}
-  toast('견적서 저장됐어요');closeQOverlay();rQuotes()
+  toast(_qEditId?'견적서 수정됐어요':'견적서 저장됐어요');closeQOverlay();rQuotes()
 }
 
 async function viewQ(id){
@@ -1578,9 +1585,35 @@ async function viewQ(id){
       <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--navy);border-top:.5px solid var(--border);padding-top:8px"><span>합 계</span><span>${(q.grand||0).toLocaleString()}원</span></div>
     </div>
     ${q.notes?`<div style="margin-top:14px;padding:11px 13px;background:#FFF5F5;border:.5px solid #FCA5A5;border-radius:8px"><div style="font-size:11px;font-weight:700;color:#c0392b;margin-bottom:4px">📌 견적참고사항</div><div style="font-size:13px;color:#c0392b;white-space:pre-wrap;line-height:1.6">${q.notes}</div></div>`:''}
-    <button class="btn bp" onclick="printQuotePDF('${q.id}')" style="margin-top:12px">PDF 출력</button>
-    ${me.isAdmin?`<button class="btn bg-r" onclick="delQ('${q.id}')">견적서 삭제</button>`:''}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn bp" onclick="editQ('${q.id}')" style="flex:1">✏️ 수정</button>
+      <button class="btn bp" onclick="printQuotePDF('${q.id}')" style="flex:1">PDF 출력</button>
+    </div>
+    ${me.isAdmin?`<button class="btn bg-r" style="margin-top:8px" onclick="delQ('${q.id}')">견적서 삭제</button>`:''}
   `)
+}
+
+async function editQ(id){
+  const q=quotes.find(x=>x.id===id);if(!q)return
+  const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
+  catalogItems=data||[]
+  _qEditId=id;qCatTab=CATS[0];qQtys={}
+  // 저장된 품목을 카탈로그 ID로 매핑
+  const savedItems=q.items||[]
+  savedItems.forEach(saved=>{
+    const match=catalogItems.find(c=>c.name===saved.name&&c.cat===saved.cat)
+    if(match)qQtys[match.id]=saved.qty
+  })
+  document.getElementById('qo-site-name').value=q.site_name||''
+  document.getElementById('qo-client').value=q.client||''
+  document.getElementById('qo-notes').value=q.notes||''
+  document.getElementById('qs-tool-rate').value=q.tool_rate??3
+  document.getElementById('qs-margin-rate').value=q.margin_rate??8
+  document.getElementById('qo-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===qCatTab?' on':''}" onclick="setQCat('${c}')">${c}</button>`).join('')
+  renderQBody();calcQ()
+  document.querySelector('#qoverlay h2').textContent='견적서 수정'
+  document.getElementById('qoverlay').classList.add('on')
+  closeSheet()
 }
 
 function printQuotePDF(id){
