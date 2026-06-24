@@ -1394,7 +1394,8 @@ async function confirmDelEvt(id){
 async function rQuotes(){
   document.getElementById('hdr-t').textContent='견적서'
   const{data:qr}=await db.from('quotes').select('*').order('created_at',{ascending:false})
-  quotes=qr||[]
+  const all=qr||[]
+  quotes=me.isAdmin?all:all.filter(q=>q.created_by_id===me.id)
   document.getElementById('hdr-s').textContent=`총 ${quotes.length}건`
   document.getElementById('main').innerHTML=
     (me.isAdmin?`<button onclick="openCatalogMgr()" style="width:100%;padding:11px;border-radius:10px;border:.5px solid var(--border);background:#fff;color:var(--navy);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;font-family:inherit">📋 카탈로그 관리</button>`:'')
@@ -1402,7 +1403,7 @@ async function rQuotes(){
     <div class="li" onclick="viewQ('${q.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div><div class="lt">${q.site_name||q.client||'견적서'}</div>
-        <div class="ls">${q.created_at?.slice(0,10)||''} · ${(q.items||[]).length}개 품목</div></div>
+        <div class="ls">${q.created_at?.slice(0,10)||''} · ${(q.items||[]).length}개 품목${me.isAdmin&&q.created_by_name?' · '+q.created_by_name:''}</div></div>
         <div style="text-align:right">
           <div style="font-size:15px;font-weight:700;color:var(--navy)">${(q.grand||0).toLocaleString()}원</div>
           <span class="badge ${q.status==='완료'?'bd':q.status==='발송'?'bi':'bw'}">${q.status||'작성중'}</span>
@@ -1584,6 +1585,8 @@ async function saveQFromCatalog(){
     ({error}=await db.from('quotes').update(payload).eq('id',_qEditId))
   } else {
     payload.status='작성중'
+    payload.created_by_id=me.id
+    payload.created_by_name=me.name
     ;({error}=await db.from('quotes').insert(payload))
   }
   if(error){toast('저장 실패: '+error.message,true);return}
@@ -1602,7 +1605,7 @@ async function viewQ(id){
   openSheet(`
     <div class="st">${q.site_name||q.client||'견적서'}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--text2)">${q.created_at?.slice(0,10)||''}</span>
+      <span style="font-size:12px;color:var(--text2)">${q.created_at?.slice(0,10)||''}${me.isAdmin&&q.created_by_name?' · 작성자: '+q.created_by_name:''}</span>
       ${me.isAdmin?`<select onchange="updQS('${q.id}',this.value)" style="border:.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--blue);font-weight:500;background:#fff;font-family:inherit">${['작성중','발송','완료'].map(s=>`<option ${(q.status||'작성중')===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="badge ${q.status==='완료'?'bd':q.status==='발송'?'bi':'bw'}">${q.status||'작성중'}</span>`}
     </div>
     <table class="qt" style="font-size:12px">
