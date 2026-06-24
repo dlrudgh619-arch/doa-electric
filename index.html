@@ -312,6 +312,7 @@ if('serviceWorker' in navigator){
 const SURL='https://rqxzazdpduosdjfikaon.supabase.co'
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxeHphemRwZHVvc2RqZmlrYW9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5OTU2MzEsImV4cCI6MjA5NDU3MTYzMX0.qQsaX18gZv9rv2LwXT6hp22fRrG6-Gu4na-HDGoAssk'
 const ADMIN_PIN='153528'
+const VAPID_PUBLIC_KEY='BF8LH-Xkd_6Mb5Zin_uLH5Wzjo2qf78f-RxmNyzmLqKtzBPk7Ie0qSuAbU8x8AfjHEV6S4K2VEjUOSoWySlwrLw'
 const COLORS=['#DBEAFE:#1D4ED8','#D1FAE5:#065F46','#FEE2E2:#991B1B','#EDE9FE:#5B21B6','#FEF9C3:#854D0E','#E0F2FE:#0369A1','#FCE7F3:#9D174D']
 const db=supabase.createClient(SURL,SKEY)
 
@@ -504,11 +505,37 @@ function logout(){
   localStorage.removeItem('doa_user');me=null;showLogin()
 }
 
-// ── 알림 권한 + Realtime
+// ── 알림 권한 + Realtime + Web Push
 async function requestNotifPermission(){
   if('Notification' in window && Notification.permission==='default'){
     await Notification.requestPermission()
   }
+  if('Notification' in window && Notification.permission==='granted'){
+    subscribeForPush()
+  }
+}
+function urlBase64ToUint8Array(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4)
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/')
+  const raw=atob(base64)
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))
+}
+function bufToB64(buf){return btoa(String.fromCharCode(...new Uint8Array(buf)))}
+async function subscribeForPush(){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window))return
+    const reg=await navigator.serviceWorker.ready
+    let sub=await reg.pushManager.getSubscription()
+    if(!sub){
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)})
+    }
+    await db.from('push_subscriptions').upsert({
+      member_id:me.id,member_name:me.name,
+      endpoint:sub.endpoint,
+      p256dh:bufToB64(sub.getKey('p256dh')),
+      auth:bufToB64(sub.getKey('auth'))
+    },{onConflict:'endpoint'})
+  }catch(e){console.warn('[Push] 구독 실패',e)}
 }
 function pushNotif(title,body){
   toast(title+' '+body)
@@ -525,13 +552,13 @@ function setupRealtime(){
       if(p.new.member_id!==me?.id)pushNotif('💬 '+p.new.member_name,'메모: '+p.new.content.slice(0,40))
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'site_files'},p=>{
-      pushNotif('📷 사진 업로드','현장에 새 사진이 추가됐어요')
+      if(p.new.uploaded_by_id!==me?.id)pushNotif('📷 사진 업로드','현장에 새 사진이 추가됐어요')
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'site_materials'},p=>{
-      pushNotif('📦 자재 추가',`'${p.new.name}' 항목이 추가됐어요`)
+      if(p.new.uploaded_by_id!==me?.id)pushNotif('📦 자재 추가',`'${p.new.name}' 항목이 추가됐어요`)
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'site_materials'},p=>{
-      if(p.new.is_checked!==p.old?.is_checked)
+      if(p.new.is_checked!==p.old?.is_checked&&p.new.uploaded_by_id!==me?.id)
         pushNotif('📦 자재 체크',`'${p.new.name}' ${p.new.is_checked?'완료 처리됐어요':'미완료로 변경됐어요'}`)
     })
     .subscribe(status=>{
@@ -542,10 +569,16 @@ function setupRealtime(){
       }
     })
 }
+// 백그라운드 복귀 시 Realtime 연결이 끊겨있을 수 있어 강제 재연결
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&me)setupRealtime()
+})
+window.addEventListener('online',()=>{if(me)setupRealtime()})
+window.addEventListener('focus',()=>{if(me)setupRealtime()})
 async function enableNotif(){
   if(!('Notification' in window)){toast('이 브라우저는 알림을 지원하지 않아요',true);return}
   const perm=await Notification.requestPermission()
-  if(perm==='granted'){toast('알림이 켜졌어요 🔔');rHome()}
+  if(perm==='granted'){await subscribeForPush();toast('알림이 켜졌어요 🔔');rHome()}
   else toast('알림이 차단됐어요. 브라우저 설정에서 허용해주세요',true)
 }
 function notifSettingCard(){
@@ -739,7 +772,7 @@ async function uploadPhotos(siteId,siteName,input){
   document.getElementById('up-prog').style.display='block'
   for(const file of files){
     const b64=await compressImg(file)
-    await db.from('site_files').insert({site_id:siteId,file_name:file.name,file_data:b64,file_type:file.type})
+    await db.from('site_files').insert({site_id:siteId,file_name:file.name,file_data:b64,file_type:file.type,uploaded_by_id:me.id})
   }
   toast(`${files.length}장 업로드 완료`)
   openSiteFiles(siteId,siteName)
@@ -876,7 +909,7 @@ async function saveMat(){
       await db.from('site_materials').update({quantity:newQty}).eq('id',exist.id)
       toast(`${_matSelected.n} → ${newQty}${_matSelected.u} 누적됐어요`)
     }else{
-      await db.from('site_materials').insert({site_id:_matSiteId,name:_matSelected.n,quantity:qty,unit:_matSelected.u,is_checked:false})
+      await db.from('site_materials').insert({site_id:_matSiteId,name:_matSelected.n,quantity:qty,unit:_matSelected.u,is_checked:false,uploaded_by_id:me.id})
       toast(`${_matSelected.n} ${qty}${_matSelected.u} 추가됐어요`)
     }
     openMaterials(_matSiteId,_matSiteName)
