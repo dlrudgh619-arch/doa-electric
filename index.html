@@ -1689,7 +1689,7 @@ async function rSchedule(){
             style="grid-column:${sg.c1+1} / span ${sg.span};grid-row:${sg.lane+1};background:${e.color||'#1A3A5C'};color:#fff;
             border-radius:${rl} ${rr} ${rr} ${rl};margin:0 ${sg.cutR?'0':'2px'} 2px ${sg.cutL?'0':'2px'};padding:0 4px;
             font-size:10px;font-weight:500;line-height:${LANE_H-2}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-            cursor:pointer;pointer-events:auto">${sg.cutL?'‹ ':''}${e.title}</div>`
+            text-align:${sg.span>1?'center':'left'};cursor:pointer;pointer-events:auto">${sg.cutL?'‹ ':''}${e.title}</div>`
         }).join('')}
         ${over.map((n,c)=>n?`<div style="grid-column:${c+1};grid-row:${laneCount};font-size:9px;color:var(--text2);padding-left:3px;pointer-events:none">+${n}</div>`:'').join('')}
       </div>
