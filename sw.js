@@ -1,4 +1,4 @@
-const CACHE='doa-v8'
+const CACHE='doa-v9'
 const ASSETS=['./','./index.html']
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))

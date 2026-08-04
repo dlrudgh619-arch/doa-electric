@@ -882,6 +882,7 @@ function renderMats(siteId,siteName,mats){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <span style="font-size:13px;color:var(--text2)">${done}/${mats.length} 완료</span>
       <div style="display:flex;gap:6px">
+        ${mats.length&&me.isAdmin?`<button class="bs" style="background:#EEF4FB;color:var(--navy);border-color:#93C5FD;font-weight:600" onclick="quoteFromMaterials('${siteId}','${sn}')">🧾 견적서 만들기</button>`:''}
         ${mats.length?`<button class="bs" style="color:var(--blue)" onclick="printMatsPDF('${sn}')">📄 PDF</button>`:''}
         <button class="bs" onclick="addMatForm('${siteId}','${sn}')">+ 추가</button>
       </div>
@@ -1282,6 +1283,19 @@ const cmpNorm=s=>(s||'').toUpperCase().replace(/[\s\-_()·.]/g,'')
 const cmpUnit=u=>(!u||u==='1')?'':u
 const cmpQty=(n,u)=>cmpUnit(u)?`${n} ${u}`:`${n}`
 let _cmpSiteId=null,_cmpSiteName='',_cmpQuotes=[],_cmpQid=null,_cmpMats=[],_cmpCatalog={},_cmpLinked=false
+let _insRate=4.8   // 4대보험 등 사업주 부담률 (%)
+
+async function loadLaborSetting(){
+  const{data}=await db.from('app_settings').select('value').eq('key','labor').maybeSingle()
+  if(data?.value?.insurance_rate!=null)_insRate=Number(data.value.insurance_rate)
+  return _insRate
+}
+async function saveInsRate(v){
+  const r=Math.max(0,parseFloat(v)||0)
+  _insRate=r
+  await db.from('app_settings').upsert({key:'labor',value:{insurance_rate:r},updated_at:new Date().toISOString()},{onConflict:'key'})
+  renderCompare()
+}
 
 async function openCompare(siteId,siteName){
   if(!me.isAdmin){toast('정산은 대표만 볼 수 있어요',true);return}
@@ -1290,7 +1304,8 @@ async function openCompare(siteId,siteName){
   const[{data:mats},{data:qs},{data:cat}]=await Promise.all([
     db.from('site_materials').select('*').eq('site_id',siteId).order('created_at'),
     db.from('quotes').select('*').order('created_at',{ascending:false}),
-    db.from('catalog_items').select('name,price,cost_price,unit')
+    db.from('catalog_items').select('cat,name,price,cost_price,unit'),
+    loadLaborSetting()
   ])
   _cmpMats=mats||[]
   _cmpCatalog={}
@@ -1298,7 +1313,7 @@ async function openCompare(siteId,siteName){
     const k=cmpNorm(c.name)
     // 같은 품명이 여러 건이면 매입가가 있는 쪽을 우선한다
     if(!_cmpCatalog[k]||(!_cmpCatalog[k].cost&&c.cost_price))
-      _cmpCatalog[k]={price:c.price||0,cost:c.cost_price||0,unit:c.unit||''}
+      _cmpCatalog[k]={price:c.price||0,cost:c.cost_price||0,unit:c.unit||'',cat:c.cat||''}
   })
   // 견적서에 site_id가 없는 경우가 많아 현장명으로도 매칭한다
   const all=(qs||[]).filter(q=>me.isAdmin||q.created_by_id===me.id)
@@ -1334,15 +1349,35 @@ function cmpBuildRows(q){
     const price=qi?qi.price:(cp?cp.price:0)   // 견적가(소매)
     const cost=cp?cp.cost:0                    // 매입가(도매)
     const qQty=qi?qi.qty:0,uQty=mi?mi.qty:0
+    const cat=(cp&&cp.cat)||(qi?qi.cat:'견적 외')
     return{
       key:k,name:(qi||mi).name,unit:cmpUnit((qi&&qi.unit)||(mi&&mi.unit))||'EA',
-      cat:qi?qi.cat:'견적 외',price,cost,
+      cat,isLabor:cat==='인건비',price,cost,
       inCatalog:!!cp,noCost:!cost,
       qQty,uQty,diff:uQty-qQty,
       qRev:qQty*price, qCost:qQty*cost, uCost:uQty*cost,
       kind:qQty===0?'extra':uQty===0?'unused':uQty>qQty?'over':uQty<qQty?'under':'same'
     }
   }).sort((a,b)=>Math.abs(b.uCost-b.qCost)-Math.abs(a.uCost-a.qCost))
+}
+
+// 자재와 인건비를 나눠 집계하고 인건비에 보험 부담률을 얹는다.
+// 매출은 견적서의 공급가액(재료비+공구손료+관리비, VAT 제외)을 쓴다.
+// 품목 합계만 쓰면 공구손료·관리비가 빠져 이익이 과소계산된다.
+function cmpTotals(rows,q){
+  const sum=(f,p)=>rows.filter(p).reduce((s,r)=>s+r[f],0)
+  const mat=r=>!r.isLabor, lab=r=>r.isLabor
+  const qRevMat=sum('qRev',mat), qRevLabor=sum('qRev',lab)
+  const itemSum=qRevMat+qRevLabor
+  const tool=Number(q?.tool_cost)||0, mg=Number(q?.margin_cost)||0
+  const qRev=Number(q?.supply)||(itemSum+tool+mg)
+  const matCost=sum('uCost',mat), matPlanCost=sum('qCost',mat)
+  const laborCost=sum('uCost',lab)
+  const insCost=Math.round(laborCost*_insRate/100)
+  const totalCost=matCost+laborCost+insCost
+  return{qRev,itemSum,tool,mg,qRevMat,qRevLabor,
+    matCost,matPlanCost,matOverrun:matCost-matPlanCost,
+    laborCost,insCost,totalCost,profit:qRev-totalCost}
 }
 
 function renderCompare(){
@@ -1368,29 +1403,38 @@ function renderCompare(){
   }
 
   const rows=cmpBuildRows(q)
-  const qRev=rows.reduce((s,r)=>s+r.qRev,0)
-  const qCost=rows.reduce((s,r)=>s+r.qCost,0)
-  const uCost=rows.reduce((s,r)=>s+r.uCost,0)
-  const profit=qRev-uCost, overrun=uCost-qCost
+  const t=cmpTotals(rows,q)
   const noCost=rows.filter(r=>r.noCost&&(r.qQty||r.uQty)).length
   const notInCat=rows.filter(r=>!r.inCatalog&&r.uQty)
 
-  const pc=profit>=0?'#059669':'#DC2626', oc=overrun<=0?'#059669':'#DC2626'
+  const pc=t.profit>=0?'#059669':'#DC2626'
+  const oc=t.matOverrun<=0?'#059669':'#DC2626'
   html+=`<div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:12px">
-    <div class="qo-sum-row"><span>견적 매출 <span style="font-size:10px;color:var(--text2)">소매</span></span><span style="font-weight:600">${qRev.toLocaleString()}원</span></div>
-    <div class="qo-sum-row"><span>예상 원가 <span style="font-size:10px;color:var(--text2)">견적수량×매입가</span></span><span style="color:var(--text2)">${qCost.toLocaleString()}원</span></div>
-    <div class="qo-sum-row"><span>실제 원가 <span style="font-size:10px;color:var(--text2)">실사용×매입가</span></span><span style="font-weight:600">${uCost.toLocaleString()}원</span></div>
-    <div class="qo-sum-row" style="font-size:12px"><span style="color:var(--text2)">└ 원가 ${overrun>0?'초과':overrun<0?'절감':'동일'}</span><span style="color:${oc};font-weight:600">${overrun>0?'+':overrun<0?'−':''}${Math.abs(overrun).toLocaleString()}원</span></div>
+    <div class="qo-sum-row" style="font-size:14px"><span style="font-weight:700">견적 매출 <span style="font-size:10px;color:var(--text2);font-weight:400">공급가액·VAT 제외</span></span><span style="font-weight:700">${t.qRev.toLocaleString()}원</span></div>
+    <div class="qo-sum-row" style="font-size:11px"><span style="color:var(--text2)">└ 품목 ${t.itemSum.toLocaleString()} (자재 ${t.qRevMat.toLocaleString()} · 인건비 ${t.qRevLabor.toLocaleString()})</span><span></span></div>
+    ${(t.tool||t.mg)?`<div class="qo-sum-row" style="font-size:11px"><span style="color:var(--text2)">└ 공구손료 ${t.tool.toLocaleString()} · 관리비 ${t.mg.toLocaleString()}</span><span></span></div>`:''}
     <div style="border-top:.5px solid var(--border);margin:8px 0"></div>
-    <div class="qo-sum-row" style="font-size:16px">
-      <span style="font-weight:700">자재 마진</span>
-      <span style="font-weight:800;color:${pc}">${profit>=0?'+':'−'}${Math.abs(profit).toLocaleString()}원</span>
+    <div class="qo-sum-row"><span>자재 원가 <span style="font-size:10px;color:var(--text2)">실사용×매입가</span></span><span style="font-weight:600">${t.matCost.toLocaleString()}원</span></div>
+    <div class="qo-sum-row" style="font-size:11px"><span style="color:var(--text2)">└ 견적 대비 ${t.matOverrun>0?'초과':t.matOverrun<0?'절감':'동일'}</span><span style="color:${oc};font-weight:600">${t.matOverrun>0?'+':t.matOverrun<0?'−':''}${Math.abs(t.matOverrun).toLocaleString()}원</span></div>
+    <div class="qo-sum-row"><span>인건비 <span style="font-size:10px;color:var(--text2)">공수×실지급 일당</span></span><span style="font-weight:600">${t.laborCost.toLocaleString()}원</span></div>
+    <div class="qo-sum-row">
+      <span class="qo-sum-rate">4대보험 등
+        <input class="qo-rate-inp" type="number" step="0.1" min="0" value="${_insRate}" onchange="saveInsRate(this.value)" title="사업주 부담률 %">%
+      </span>
+      <span style="font-weight:600">${t.insCost.toLocaleString()}원</span>
     </div>
-    ${qRev?`<div style="text-align:right;font-size:11px;color:var(--text2);margin-top:2px">마진율 ${(profit/qRev*100).toFixed(1)}%</div>`:''}
+    <div style="border-top:.5px solid var(--border);margin:8px 0"></div>
+    <div class="qo-sum-row"><span style="font-weight:600">총 원가</span><span style="font-weight:700">${t.totalCost.toLocaleString()}원</span></div>
+    <div class="qo-sum-row" style="font-size:17px;padding-top:6px">
+      <span style="font-weight:800">${t.profit>=0?'순이익':'손실'}</span>
+      <span style="font-weight:800;color:${pc}">${t.profit>=0?'+':'−'}${Math.abs(t.profit).toLocaleString()}원</span>
+    </div>
+    ${t.qRev?`<div style="text-align:right;font-size:11px;color:var(--text2);margin-top:2px">이익률 ${(t.profit/t.qRev*100).toFixed(1)}%</div>`:''}
   </div>
   <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:9px 12px;font-size:11px;color:#92400E;line-height:1.6;margin-bottom:12px">
-    ⚠️ 자재만 계산한 값이에요. <b>인건비와 4대보험은 포함돼 있지 않아요.</b>
-    ${noCost?`<br>매입가가 없는 품목이 <b>${noCost}개</b> 있어요 (원가 0 처리). 카탈로그 관리에서 입력하세요.`:''}
+    ℹ️ 인건비는 <b>인건비 카테고리 품목의 실사용 수량 × 매입가</b>로 계산해요. 매입가에 실제 지급 일당을 넣어주세요.
+    <br>부담률 기본값 <b>4.8%</b>는 일용직 기준이에요 (상용직은 퇴직금 포함 약 22%).
+    ${noCost?`<br>⚠️ 매입가가 없는 품목이 <b>${noCost}개</b> 있어요 (원가 0 처리).`:''}
   </div>`
 
   if(notInCat.length){
@@ -1398,6 +1442,27 @@ function renderCompare(){
       🔎 카탈로그에 <b>없는 품명</b>이 ${notInCat.length}개예요. 원가가 0으로 잡히니 카탈로그에 등록하거나 품명을 맞춰주세요.<br>
       ${notInCat.map(r=>`· ${r.name}`).join('<br>')}
     </div>`
+  }
+
+  const laborRows=rows.filter(r=>r.isLabor&&(r.qQty||r.uQty))
+  if(laborRows.length){
+    html+=`<div style="background:#EEF4FB;color:var(--navy);font-size:12px;font-weight:700;padding:7px 11px;border-radius:7px;margin:12px 0 6px">👷 인건비 (${laborRows.length})</div>`
+    laborRows.forEach(r=>{
+      const dc=r.diff>0?'#DC2626':r.diff<0?'#2563EB':'var(--text2)'
+      html+=`<div style="padding:9px 2px;border-bottom:.5px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <div style="font-size:13px;font-weight:500;flex:1">${r.name}${r.noCost?'<span style="font-size:10px;color:var(--red);margin-left:4px">일당?</span>':''}</div>
+          <div style="font-size:12px;font-weight:600;white-space:nowrap">${r.uCost.toLocaleString()}원</div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px">
+          견적 ${cmpQty(r.qQty,r.unit)} → 실투입 ${cmpQty(r.uQty,r.unit)}
+          <span style="color:${dc};font-weight:600">(${r.diff>0?'+':''}${cmpQty(r.diff,r.unit)})</span>
+        </div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">실지급 ${r.cost.toLocaleString()} / 견적 ${r.price.toLocaleString()}</div>
+      </div>`
+    })
+    html+=`<div style="display:flex;justify-content:space-between;padding:9px 2px;font-size:12px;color:var(--text2)">
+      <span>4대보험 등 (${_insRate}%)</span><span style="font-weight:600">${t.insCost.toLocaleString()}원</span></div>`
   }
 
   const groups=[
@@ -1408,7 +1473,7 @@ function renderCompare(){
     ['same','✅ 견적과 일치','#F0FDF4','#166534']
   ]
   groups.forEach(([kind,label,bg,fg])=>{
-    const list=rows.filter(r=>r.kind===kind)
+    const list=rows.filter(r=>r.kind===kind&&!r.isLabor)
     if(!list.length)return
     html+=`<div style="background:${bg};color:${fg};font-size:12px;font-weight:700;padding:7px 11px;border-radius:7px;margin:12px 0 6px">${label} (${list.length})</div>`
     list.forEach(r=>{
@@ -1432,13 +1497,53 @@ function renderCompare(){
   document.getElementById('sc').innerHTML=html
 }
 
+// 현장에 등록된 실사용 자재를 소매가(견적가)로 견적서 초안으로 옮긴다.
+// 바로 저장하지 않고 작성 화면을 열어 검토/수정 후 저장하게 한다.
+async function quoteFromMaterials(siteId,siteName){
+  if(!me.isAdmin){toast('견적서 작성은 대표만 가능해요',true);return}
+  const[{data:cat},{data:mats}]=await Promise.all([
+    db.from('catalog_items').select('*').order('sort_order').order('created_at'),
+    db.from('site_materials').select('name,quantity').eq('site_id',siteId),
+    ensureSites()
+  ])
+  if(!mats||!mats.length){toast('등록된 자재가 없어요',true);return}
+  catalogItems=cat||[]
+  const byKey={}
+  catalogItems.forEach(c=>{
+    const k=cmpNorm(c.name)
+    if(!byKey[k]||(!byKey[k].price&&c.price))byKey[k]=c
+  })
+  qQtys={};qCatTab=CATS[0];_qEditId=null
+  let matched=0;const missing=[],noPrice=new Set()
+  mats.forEach(m=>{
+    const c=byKey[cmpNorm(m.name)]
+    if(!c){missing.push(m.name);return}
+    qQtys[c.id]=(qQtys[c.id]||0)+(Number(m.quantity)||0)
+    matched++
+    if(!c.price)noPrice.add(c.name)
+  })
+  const site=sites.find(s=>s.id===siteId)
+  renderQSiteOptions(siteId,'')
+  document.getElementById('qo-client').value=site?.client||''
+  document.getElementById('qo-notes').value=''
+  document.getElementById('qs-tool-rate').value=3
+  document.getElementById('qs-margin-rate').value=8
+  document.getElementById('qo-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===qCatTab?' on':''}" onclick="setQCat('${c}')">${c}</button>`).join('')
+  renderQBody();calcQ()
+  document.querySelector('#qoverlay h2').textContent='견적서 작성 (자재 기준)'
+  document.getElementById('qoverlay').classList.add('on')
+  closeSheet()
+  let msg=`자재 ${matched}건을 소매가로 불러왔어요`
+  const warn=[]
+  if(noPrice.size)warn.push(`견적가 미입력 ${noPrice.size}건`)
+  if(missing.length)warn.push(`카탈로그 없음 ${missing.length}건`)
+  toast(warn.length?`${msg} · ${warn.join(' · ')}`:msg,warn.length>0)
+}
+
 function printComparePDF(siteName){
   const q=_cmpQuotes.find(x=>x.id===_cmpQid)||null
   const rows=cmpBuildRows(q)
-  const qRev=rows.reduce((s,r)=>s+r.qRev,0)
-  const qCost=rows.reduce((s,r)=>s+r.qCost,0)
-  const uCost=rows.reduce((s,r)=>s+r.uCost,0)
-  const profit=qRev-uCost, overrun=uCost-qCost
+  const t=cmpTotals(rows,q)
   const KIND={over:'초과',extra:'견적외',under:'절감',unused:'미사용',same:'일치'}
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>정산서_${siteName}</title>
 <style>@page{margin:0;size:auto}@media print{.no-print{display:none!important}body{padding:16px}}
@@ -1456,17 +1561,22 @@ td{padding:6px 8px;border:.5px solid #ddd;font-size:11px}
 <h1>현 장 정 산 서</h1>
 <div class="sub">${siteName} &nbsp;|&nbsp; 견적서: ${q?.site_name||q?.client||'-'} &nbsp;|&nbsp; 출력일 ${new Date().toISOString().slice(0,10)}</div>
 <table><thead><tr><th>구분</th><th>품목</th><th class="c">단위</th><th class="r">매입가</th><th class="r">견적가</th><th class="r">견적수량</th><th class="r">실사용</th><th class="r">차이</th><th class="r">견적매출</th><th class="r">실제원가</th><th class="r">원가증감</th></tr></thead><tbody>
-${rows.map(r=>{const g=r.uCost-r.qCost;return `<tr><td class="c">${KIND[r.kind]}</td><td>${r.name}</td><td class="c">${r.unit}</td><td class="r">${r.cost.toLocaleString()}</td><td class="r">${r.price.toLocaleString()}</td><td class="r">${r.qQty}</td><td class="r">${r.uQty}</td><td class="r">${r.diff>0?'+':''}${r.diff}</td><td class="r">${r.qRev.toLocaleString()}</td><td class="r">${r.uCost.toLocaleString()}</td><td class="r ${g>0?'neg':'pos'}">${g>0?'+':''}${g.toLocaleString()}</td></tr>`}).join('')}
+${rows.map(r=>{const g=r.uCost-r.qCost;return `<tr><td class="c">${r.isLabor?'인건비':KIND[r.kind]}</td><td>${r.name}</td><td class="c">${r.unit}</td><td class="r">${r.cost.toLocaleString()}</td><td class="r">${r.price.toLocaleString()}</td><td class="r">${r.qQty}</td><td class="r">${r.uQty}</td><td class="r">${r.diff>0?'+':''}${r.diff}</td><td class="r">${r.qRev.toLocaleString()}</td><td class="r">${r.uCost.toLocaleString()}</td><td class="r ${g>0?'neg':'pos'}">${g>0?'+':''}${g.toLocaleString()}</td></tr>`}).join('')}
 </tbody></table>
 <table class="sum">
-<tr><td>견적 매출 (소매)</td><td class="r">${qRev.toLocaleString()}원</td></tr>
-<tr><td>예상 원가 (견적수량×매입가)</td><td class="r">${qCost.toLocaleString()}원</td></tr>
-<tr><td>실제 원가 (실사용×매입가)</td><td class="r">${uCost.toLocaleString()}원</td></tr>
-<tr><td>└ 원가 ${overrun>0?'초과':overrun<0?'절감':'동일'}</td><td class="r ${overrun>0?'neg':'pos'}">${overrun>0?'+':overrun<0?'−':''}${Math.abs(overrun).toLocaleString()}원</td></tr>
-<tr class="tot"><td>자재 마진</td><td class="r ${profit>=0?'pos':'neg'}">${profit>=0?'+':'−'}${Math.abs(profit).toLocaleString()}원${qRev?` (${(profit/qRev*100).toFixed(1)}%)`:''}</td></tr>
+<tr><td>견적 매출 (공급가액, VAT 제외)</td><td class="r">${t.qRev.toLocaleString()}원</td></tr>
+<tr><td>└ 품목 (자재 / 인건비)</td><td class="r">${t.qRevMat.toLocaleString()} / ${t.qRevLabor.toLocaleString()}원</td></tr>
+<tr><td>└ 공구손료 / 관리비</td><td class="r">${t.tool.toLocaleString()} / ${t.mg.toLocaleString()}원</td></tr>
+<tr><td>자재 원가 (실사용×매입가)</td><td class="r">${t.matCost.toLocaleString()}원</td></tr>
+<tr><td>└ 견적 대비 ${t.matOverrun>0?'초과':t.matOverrun<0?'절감':'동일'}</td><td class="r ${t.matOverrun>0?'neg':'pos'}">${t.matOverrun>0?'+':t.matOverrun<0?'−':''}${Math.abs(t.matOverrun).toLocaleString()}원</td></tr>
+<tr><td>인건비 (공수×실지급 일당)</td><td class="r">${t.laborCost.toLocaleString()}원</td></tr>
+<tr><td>4대보험 등 (${_insRate}%)</td><td class="r">${t.insCost.toLocaleString()}원</td></tr>
+<tr><td>총 원가</td><td class="r">${t.totalCost.toLocaleString()}원</td></tr>
+<tr class="tot"><td>${t.profit>=0?'순이익':'손실'}</td><td class="r ${t.profit>=0?'pos':'neg'}">${t.profit>=0?'+':'−'}${Math.abs(t.profit).toLocaleString()}원${t.qRev?` (${(t.profit/t.qRev*100).toFixed(1)}%)`:''}</td></tr>
 </table>
 <div style="margin-top:20px;font-size:10px;color:#888;line-height:1.6">
-※ 자재 항목만 계산한 값이며, 인건비 및 4대보험 부담분은 포함되어 있지 않습니다.<br>
+※ 인건비는 인건비 카테고리 품목의 실사용 수량 × 매입가(실지급 일당)로 산출했습니다.<br>
+※ 4대보험 등 사업주 부담률 ${_insRate}% 를 인건비에 적용했습니다.<br>
 ※ 매입가가 등록되지 않은 품목은 원가 0원으로 계산됩니다.
 </div>
 <div class="no-print" style="text-align:center;margin-top:24px"><button onclick="window.print()" style="padding:10px 28px;font-size:14px;background:#1A3A5C;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 인쇄 / PDF 저장</button></div>
