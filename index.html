@@ -1610,15 +1610,31 @@ async function rSchedule(){
   members=mr.data||[]
   const from=`${scY}-${pad(scMo+1)}-01`
   const to=`${scY}-${pad(scMo+1)}-${new Date(scY,scMo+1,0).getDate()}`
-  const{data:evts}=await db.from('cal_events').select('*').gte('work_date',from).lte('work_date',to).order('work_date')
+  // 이번 달과 겹치는 일정 전부 (지난달에 시작해 이번 달까지 이어지는 것 포함)
+  const{data:evts}=await db.from('cal_events').select('*')
+    .lte('work_date',to)
+    .or(`end_date.gte.${from},and(end_date.is.null,work_date.gte.${from})`)
+    .order('work_date')
   const{data:ems}=await db.from('cal_event_members').select('event_id,member:members(name)').order('event_id')
   const events=evts||[],emList=ems||[]
   const days=['일','월','화','수','목','금','토']
   const dim=new Date(scY,scMo+1,0).getDate()
   const fd=new Date(scY,scMo,1).getDay()
   const td=today()
+  // 기간 일정을 날짜별로 펼친다. 첫날에만 넣으면 이어지는 날에 표시되지 않는다
   const byDate={}
-  events.forEach(e=>{if(!byDate[e.work_date])byDate[e.work_date]=[];byDate[e.work_date].push(e)})
+  events.forEach(e=>{
+    const s=e.work_date, en=e.end_date||e.work_date
+    if(!s)return
+    for(let d=new Date(s+'T00:00:00'),last=new Date(en+'T00:00:00');d<=last;d.setDate(d.getDate()+1)){
+      const k=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+      if(k<from||k>to)continue
+      if(!byDate[k])byDate[k]=[]
+      byDate[k].push({...e,isStart:k===s,isEnd:k===en,multi:s!==en})
+    }
+  })
+  // 기간 일정을 먼저 그려 띠가 끊기지 않게 한다
+  Object.values(byDate).forEach(l=>l.sort((a,b)=>(b.multi-a.multi)||String(a.work_date).localeCompare(b.work_date)))
 
   let cal=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <button class="bs" onclick="scMo>0?scMo--:(scY--,scMo=11);rSchedule()">◀</button>
@@ -1637,12 +1653,16 @@ async function rSchedule(){
     const day=i+1,dstr=`${scY}-${pad(scMo+1)}-${pad(day)}`
     const isT=dstr===td,dow=new Date(scY,scMo,day).getDay()
     const last=(i+fd+1)%7===0,dayEvts=byDate[dstr]||[]
-    cal+=`<div style="height:76px;overflow:hidden;padding:2px;border-right:${last?'none':'.5px solid var(--border)'};border-bottom:.5px solid var(--border);background:${isT?'#EEF4FF':'#fff'};cursor:pointer" onclick="openDateSheet('${dstr}')">
+    cal+=`<div style="height:76px;overflow:hidden;padding:2px 0;border-right:${last?'none':'.5px solid var(--border)'};border-bottom:.5px solid var(--border);background:${isT?'#EEF4FF':'#fff'};cursor:pointer" onclick="openDateSheet('${dstr}')">
       <div style="width:20px;height:20px;border-radius:50%;background:${isT?'var(--blue)':'transparent'};color:${isT?'#fff':dow===0?'#EF4444':dow===6?'#3B82F6':'var(--text)'};display:flex;align-items:center;justify-content:center;margin:0 auto 2px;font-size:11px;font-weight:${isT?700:400}">${day}</div>`
     dayEvts.slice(0,3).forEach(e=>{
-      cal+=`<div onclick="event.stopPropagation();openDateSheet('${dstr}')" style="background:${e.color||'#1A3A5C'};color:#fff;border-radius:2px;padding:1px 3px;font-size:9px;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;line-height:1.4">${e.title}</div>`
+      // 기간 일정은 시작/끝만 모서리를 둥글게 해서 날짜 사이가 이어져 보이게 한다
+      const rad=!e.multi?'3px':e.isStart&&e.isEnd?'3px':e.isStart?'3px 0 0 3px':e.isEnd?'0 3px 3px 0':'0'
+      // 주가 바뀌면 이름을 다시 보여준다
+      const showTitle=!e.multi||e.isStart||dow===0
+      cal+=`<div onclick="event.stopPropagation();openDateSheet('${dstr}')" title="${e.title}" style="background:${e.color||'#1A3A5C'};color:#fff;border-radius:${rad};padding:1px ${e.multi?'2px':'3px'};font-size:9px;margin:0 ${e.multi&&!e.isEnd?'0':'1px'} 1px ${e.multi&&!e.isStart?'0':'1px'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;line-height:1.4">${showTitle?e.title:'&nbsp;'}</div>`
     })
-    if(dayEvts.length>3) cal+=`<div style="font-size:8px;color:var(--text2);padding-left:2px">+${dayEvts.length-3}개</div>`
+    if(dayEvts.length>3) cal+=`<div style="font-size:8px;color:var(--text2);padding-left:3px">+${dayEvts.length-3}개</div>`
     cal+=`</div>`
   }
   cal+=`</div></div>`
@@ -1682,10 +1702,13 @@ function togEvtM(id){
 async function saveEvt(){
   const title=document.getElementById('ev-title').value.trim()
   if(!title){toast('일정명을 입력하세요',true);return}
+  const s=v('ev-s')||today()
+  const e=v('ev-e')||s
+  if(e<s){toast('종료일이 시작일보다 앞이에요',true);return}
   const data={
     title,
-    work_date:v('ev-s')||today(),
-    end_date:v('ev-e')||v('ev-s')||today(),
+    work_date:s,
+    end_date:e,
     color:document.getElementById('ev-col').value,
     notes:v('ev-notes')
   }
@@ -1707,7 +1730,11 @@ async function saveEvt(){
 async function openDateSheet(date){
   const[,mo,d]=date.split('-')
   openSheet(`<div class="st">${mo}월 ${parseInt(d)}일</div><div class="loading"><div class="spin"></div></div>`)
-  const{data:evts}=await db.from('cal_events').select('*').eq('work_date',date).order('created_at')
+  // 그 날짜에 걸쳐 있는 일정 전부 (기간 중간 날짜를 눌러도 보이게)
+  const{data:evts}=await db.from('cal_events').select('*')
+    .lte('work_date',date)
+    .or(`end_date.gte.${date},and(end_date.is.null,work_date.eq.${date})`)
+    .order('work_date')
   const events=evts||[]
   // 팀원 이름 조회
   let emMap={}
@@ -1724,6 +1751,7 @@ async function openDateSheet(date){
         <div style="width:10px;height:40px;border-radius:3px;background:${e.color||'#1A3A5C'};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.title}</div>
+          ${(e.end_date&&e.end_date!==e.work_date)?`<div style="font-size:11px;color:var(--blue);margin-top:2px;font-weight:500">📅 ${e.work_date} ~ ${e.end_date} (${Math.round((new Date(e.end_date)-new Date(e.work_date))/864e5)+1}일)</div>`:''}
           ${names?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${names}</div>`:''}
           ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:1px;opacity:.8">${e.notes}</div>`:''}
         </div>
