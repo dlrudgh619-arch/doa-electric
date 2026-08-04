@@ -159,6 +159,69 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .cm-edit:active{color:var(--navy)}
 .cm-del{background:none;border:none;color:#CBD5E1;font-size:20px;cursor:pointer;padding:0 2px;line-height:1}
 .cm-del:active{color:var(--red)}
+/* ══════════════ PC 레이아웃 (1024px 이상에서만 적용) ══════════════
+   screen 한정이라 인쇄/PDF와 모바일 화면에는 영향이 없다 */
+@media screen and (min-width:1024px){
+  body{max-width:none}
+  body.logged-in{overflow:hidden}
+
+  /* 로그인 화면은 가운데 카드로 */
+  #login{justify-content:center}
+  .login-card,.admin-btn{max-width:420px}
+
+  /* 앱 셸: 상단 헤더 + 좌측 사이드바 + 본문 (DOM 순서와 무관하게 배치) */
+  body.logged-in #app{display:grid!important;grid-template-columns:214px minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);height:100vh;overflow:hidden}
+  #hdr{grid-area:1/1/2/3;position:static;padding:15px 28px}
+  #hdr h1{font-size:19px}
+  #hdr p{font-size:12px}
+
+  /* 하단 탭바 → 좌측 세로 메뉴 */
+  #nav{grid-area:2/1/3/2;position:static;width:auto;max-width:none;transform:none;
+    display:flex;flex-direction:column;gap:2px;padding:14px 10px;
+    border-top:none;border-right:.5px solid var(--border);overflow-y:auto}
+  .nb{flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 14px;
+    border-radius:10px;font-size:14px;font-weight:500}
+  .nb svg{width:19px;height:19px}
+  .nb:hover{background:var(--bg)}
+  .nb.on{background:#EEF4FB;font-weight:700}
+
+  /* 본문: 목록 카드는 2단, 그 외 요소는 전체 폭 */
+  #main{grid-area:2/2/3/3;overflow-y:auto;padding:22px 28px 90px;
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start}
+  #main>*{grid-column:1/-1;margin-bottom:0}
+  #main>.li{grid-column:auto}
+  .li{transition:box-shadow .15s}
+  .li:hover{box-shadow:0 2px 12px rgba(26,58,92,.09)}
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .att-wrap{max-width:780px}
+  .photo-grid{grid-template-columns:repeat(6,1fr)}
+  .bs:hover{background:var(--bg)}
+
+  .fab{right:36px;bottom:32px;transform:none;width:56px;height:56px;font-size:30px}
+
+  /* 바텀시트 → 가운데 모달 */
+  #sheet{top:50%;bottom:auto;width:min(92vw,620px);max-width:620px;max-height:86vh;
+    border-radius:16px;padding:24px 24px 28px;opacity:0;pointer-events:none;
+    transform:translate(-50%,-48%);transition:opacity .18s,transform .18s}
+  #sheet.on{transform:translate(-50%,-50%);opacity:1;pointer-events:auto}
+  .sh{display:none}
+
+  /* 전체화면 오버레이(견적/카탈로그/교육) → 가운데 패널 */
+  .full-ov{top:32px;bottom:32px;width:min(94vw,1000px);border-radius:16px;
+    box-shadow:0 24px 60px rgba(0,0,0,.28)}
+  .qo-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+    align-content:start;padding:14px 16px}
+  .qo-body>*{margin-bottom:0}
+  .qo-body>.empty{grid-column:1/-1}
+  #cat-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-content:start}
+  #cat-body>*{margin-bottom:0}
+  #cat-body>*:not(.cm-item){grid-column:1/-1}
+}
+@media screen and (min-width:1600px){
+  #main{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
 /* PDF 인쇄 */
 @media print{body>*{display:none!important}#printarea{display:block!important;position:fixed;inset:0;background:#fff;z-index:9999}}
 #printarea{display:none}
@@ -397,6 +460,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
 async function showLogin(){
   document.getElementById('login').style.display='flex'
   document.getElementById('app').style.display='none'
+  document.body.classList.remove('logged-in')
   const{data}=await db.from('members').select('*').order('created_at')
   members=data||[]
   const list=document.getElementById('login-list')
@@ -496,6 +560,7 @@ function adminLogin(){
 function showApp(){
   document.getElementById('login').style.display='none'
   document.getElementById('app').style.display='block'
+  document.body.classList.add('logged-in')  // PC 레이아웃 전환용
   document.getElementById('hdr-av').textContent=me.name[0]
   requestNotifPermission()
   setupRealtime()
