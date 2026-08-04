@@ -930,17 +930,16 @@ async function addMatForm(siteId,siteName){
   })
 }
 
-// 자재 선택 목록 = 견적 카탈로그 + 아직 카탈로그에 없는 기존 자재명
-// 카탈로그에 없는 품목은 정산에서 원가가 0으로 잡히므로 따로 표시한다
+// 자재 선택 목록 = 견적 카탈로그 (품명을 한 곳에서만 관리한다)
+// 단가는 카탈로그 관리에서 카테고리별로 수정한다
 let MAT_PICK_LIST=[]
 async function loadMatPickList(){
   const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
-  if(data)catalogItems=data
-  const cat=(data||[]).map(c=>({n:c.name,u:c.unit&&c.unit!=='1'?c.unit:'EA',cat:c.cat,legacy:false}))
-  const known=new Set(cat.map(c=>cmpNorm(c.n)))
-  const legacy=MATS_LIST.filter(m=>!known.has(cmpNorm(m.n))).map(m=>({n:m.n,u:m.u,cat:'미등록',legacy:true}))
-  MAT_PICK_LIST=[...cat,...legacy].sort((a,b)=>
-    (a.legacy-b.legacy)||(CATS.indexOf(a.cat)-CATS.indexOf(b.cat))||a.n.localeCompare(b.n,'ko'))
+  if(data){
+    catalogItems=data
+    MAT_PICK_LIST=data.map(c=>({n:c.name,u:cmpUnit(c.unit)||'EA',cat:c.cat,noPrice:!c.price}))
+      .sort((a,b)=>(CATS.indexOf(a.cat)-CATS.indexOf(b.cat))||a.n.localeCompare(b.n,'ko'))
+  }
   return MAT_PICK_LIST
 }
 
@@ -951,7 +950,7 @@ function renderMatPick(list){
   pick.innerHTML=list.map(m=>`
     <div data-name="${m.n}" data-unit="${m.u}"
       style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:.5px solid var(--border);cursor:pointer;font-size:13px;background:${_matSelected&&_matSelected.n===m.n?'#DBEAFE':'transparent'}">
-      <span>${m.n}${m.legacy?'<span style="font-size:10px;color:#B45309;background:#FEF3C7;border-radius:4px;padding:1px 5px;margin-left:6px">카탈로그 미등록</span>':`<span style="font-size:10px;color:var(--text2);margin-left:6px">${m.cat}</span>`}</span>
+      <span>${m.n}<span style="font-size:10px;color:var(--text2);margin-left:6px">${m.cat}</span>${m.noPrice?'<span style="font-size:10px;color:#B45309;background:#FEF3C7;border-radius:4px;padding:1px 5px;margin-left:5px">단가 미입력</span>':''}</span>
       <span style="font-size:11px;color:var(--text2);flex-shrink:0;margin-left:8px">${m.u}</span>
     </div>`).join('')
 }
@@ -1482,24 +1481,6 @@ ${rows.map(r=>{const g=r.uCost-r.qCost;return `<tr><td class="c">${KIND[r.kind]}
 // ══════════════ 일정 (네이버웍스 스타일) ══════════════
 let scY=new Date().getFullYear(),scMo=new Date().getMonth()
 const ECOLS=['#1A3A5C','#2E6DA4','#27AE60','#E67E22','#E74C3C','#8E44AD']
-const MATS_LIST=[
-  {n:'HIV 2.5SQ',u:'EA'},{n:'CV 2.5SQ 3C',u:'EA'},{n:'UTP 5E',u:'EA'},
-  {n:'SF후렉시블 16mm',u:'EA'},{n:'SF후렉시블 22mm',u:'EA'},
-  {n:'난연 CD관 16mm',u:'EA'},{n:'난연 CD관 22mm',u:'EA'},
-  {n:'16원터치커넥터',u:'EA'},{n:'22원터치커넥터',u:'EA'},
-  {n:'전산볼트',u:'EA'},{n:'양날브라캣',u:'EA'},
-  {n:'레이스웨이 70x40 바디',u:'EA'},{n:'레이스웨이 70 기억자연결',u:'EA'},
-  {n:'레이스웨이 70 일자연결',u:'EA'},{n:'레이스웨이 70 티자연결',u:'EA'},
-  {n:'레이스웨이 40x40 바디',u:'EA'},{n:'레이스웨이 40 기억자연결',u:'EA'},
-  {n:'레이스웨이 40 일자연결',u:'EA'},{n:'레이스웨이 40 티자연결',u:'EA'},
-  {n:'케이가젯 석고보조대(비검사용)',u:'EA'},{n:'케이가젯 석고박스(검사용)',u:'EA'},
-  {n:'분전함 500x700',u:'EA'},{n:'분전함 600x700',u:'EA'},{n:'분전함 600x800',u:'EA'},
-  {n:'레일 블랙 3M',u:'EA'},{n:'레일 블랙 2M',u:'EA'},
-  {n:'레일 화이트 3M',u:'EA'},{n:'레일 화이트 2M',u:'EA'},
-  {n:'10SQ 4C',u:'M'},{n:'16SQ 4C',u:'M'},{n:'25SQ 4C',u:'M'},{n:'35SQ 4C',u:'M'},
-  {n:'GV 6SQ',u:'M'},{n:'GV 10SQ',u:'M'},{n:'GV 16SQ',u:'M'},{n:'GV 25SQ',u:'M'},{n:'GV 35SQ',u:'M'},
-  {n:'내선전공',u:'명'}
-]
 let evtMems=[]
 let _matSiteId='',_matSiteName='',_matSelected=null,_matsData=[]
 
@@ -1749,7 +1730,12 @@ function renderCatMgr(){
       </div>`).join('')
     :`<div class="empty" style="padding:32px 20px"><div class="ei">📦</div><div style="font-size:13px">품목이 없어요</div><div style="font-size:12px;margin-top:4px">아래 버튼으로 추가하세요</div></div>`
   const addFormHtml=catAddOpen ? inlineForm(null,null) : ''
-  document.getElementById('cat-body').innerHTML=listHtml+addFormHtml
+  const noPrice=items.filter(i=>!i.price).length, noCost=items.filter(i=>!i.cost_price).length
+  const notice=(noPrice||noCost)?`<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:9px 12px;font-size:11px;color:#92400E;line-height:1.6;margin-bottom:8px">
+      ${catMgrTab} 품목 중 ${noPrice?`<b>견적가 미입력 ${noPrice}개</b>`:''}${noPrice&&noCost?', ':''}${noCost?`<b>매입가 미입력 ${noCost}개</b>`:''}
+      <br>✏️ 를 눌러 단가를 입력하면 정산에 원가가 반영돼요.
+    </div>`:''
+  document.getElementById('cat-body').innerHTML=notice+listHtml+addFormHtml
   if(catAddOpen||catEditId)setTimeout(()=>{document.getElementById('ci-name')?.focus();cmMarginPreview()},50)
   document.getElementById('cat-add-btn').textContent=(catAddOpen||catEditId)?'▲ 닫기':'+ 품목 추가'
 }
