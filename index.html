@@ -287,10 +287,9 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
     <h2>견적서 작성</h2>
   </div>
   <div class="qo-info">
-    <div class="qo-row">
-      <div><label class="fl">현장명</label><input class="fi" id="qo-site-name" placeholder="현장명 직접 입력"></div>
-      <div><label class="fl">발주처</label><input class="fi" id="qo-client" placeholder="발주처명"></div>
-    </div>
+    <div><label class="fl">현장 선택</label><select class="fi" id="qo-site-sel" onchange="onQSiteChange()"></select></div>
+    <div id="qo-site-manual" style="margin-top:8px;display:none"><label class="fl">현장명 직접 입력</label><input class="fi" id="qo-site-name" placeholder="현장명을 입력하세요"></div>
+    <div style="margin-top:8px"><label class="fl">발주처</label><input class="fi" id="qo-client" placeholder="발주처명"></div>
     <div style="margin-top:8px"><label class="fl">견적참고사항</label><textarea class="fi" id="qo-notes" rows="2" placeholder="특이사항, 조건 등 참고사항을 입력하세요..." style="resize:none;line-height:1.6;font-size:13px;color:#c0392b;font-weight:500"></textarea></div>
   </div>
   <div class="qo-tabs" id="qo-tabs"></div>
@@ -1809,11 +1808,48 @@ async function deleteCatItem(id){
 
 
 // ══ 견적서 작성 ══
+// 견적서를 현장에 연결해두면 정산에서 자동으로 매칭된다.
+// 계약 전 견적도 있으므로 '직접 입력'을 남겨둔다 (이때 site_id는 null)
+async function ensureSites(){
+  if(sites&&sites.length)return sites
+  const{data}=await db.from('sites').select('*').order('created_at',{ascending:false})
+  sites=data||[]
+  return sites
+}
+function renderQSiteOptions(siteId,siteName){
+  const manual=!siteId&&!!siteName
+  document.getElementById('qo-site-sel').innerHTML=
+    `<option value="">현장을 선택하세요</option>`
+    +sites.map(s=>`<option value="${s.id}" ${s.id===siteId?'selected':''}>${s.name}</option>`).join('')
+    +`<option value="__manual" ${manual?'selected':''}>➕ 직접 입력 (현장 미등록)</option>`
+  document.getElementById('qo-site-manual').style.display=manual?'block':'none'
+  document.getElementById('qo-site-name').value=manual?siteName:''
+}
+function onQSiteChange(){
+  const v=document.getElementById('qo-site-sel').value
+  const manual=v==='__manual'
+  document.getElementById('qo-site-manual').style.display=manual?'block':'none'
+  if(manual){document.getElementById('qo-site-name').focus();return}
+  const s=sites.find(x=>x.id===v)
+  if(s&&s.client)document.getElementById('qo-client').value=s.client
+}
+function getQSite(){
+  const v=document.getElementById('qo-site-sel').value
+  if(v&&v!=='__manual'){
+    const s=sites.find(x=>x.id===v)
+    return{site_id:v,site_name:s?s.name:''}
+  }
+  return{site_id:null,site_name:document.getElementById('qo-site-name').value.trim()}
+}
+
 async function showQuoteForm(){
-  const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
+  const[{data},] =await Promise.all([
+    db.from('catalog_items').select('*').order('sort_order').order('created_at'),
+    ensureSites()
+  ])
   catalogItems=data||[]
   qQtys={};qCatTab=CATS[0]
-  document.getElementById('qo-site-name').value=''
+  renderQSiteOptions(null,'')
   document.getElementById('qo-client').value=''
   document.getElementById('qo-notes').value=''
   document.getElementById('qs-tool-rate').value=3
@@ -1880,7 +1916,7 @@ async function saveQFromCatalog(){
   const tool=Math.round(mat*toolRate/100),mg=Math.round(mat*mgRate/100)
   const supply=mat+tool+mg,vat=Math.round(supply*.1),grand=supply+vat
   const payload={
-    site_name:document.getElementById('qo-site-name').value.trim(),
+    ...getQSite(),
     client:document.getElementById('qo-client').value.trim(),
     notes:document.getElementById('qo-notes').value.trim()||null,
     items:allItems,mat,tool_rate:toolRate,tool_cost:tool,
@@ -1938,7 +1974,10 @@ async function viewQ(id){
 
 async function editQ(id){
   const q=quotes.find(x=>x.id===id);if(!q)return
-  const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
+  const[{data},]=await Promise.all([
+    db.from('catalog_items').select('*').order('sort_order').order('created_at'),
+    ensureSites()
+  ])
   catalogItems=data||[]
   _qEditId=id;qCatTab=CATS[0];qQtys={}
   // 저장된 품목을 카탈로그 ID로 매핑
@@ -1947,7 +1986,14 @@ async function editQ(id){
     const match=catalogItems.find(c=>c.name===saved.name&&c.cat===saved.cat)
     if(match)qQtys[match.id]=saved.qty
   })
-  document.getElementById('qo-site-name').value=q.site_name||''
+  // 기존 견적은 site_id가 없으므로 현장명으로 찾아 연결해준다 (저장 시 반영됨)
+  let sid=q.site_id&&sites.some(s=>s.id===q.site_id)?q.site_id:null
+  if(!sid&&q.site_name){
+    const qn=cmpNorm(q.site_name)
+    const hit=sites.find(s=>{const sn=cmpNorm(s.name);return sn&&qn&&(sn===qn||sn.includes(qn)||qn.includes(sn))})
+    if(hit)sid=hit.id
+  }
+  renderQSiteOptions(sid,sid?'':(q.site_name||''))
   document.getElementById('qo-client').value=q.client||''
   document.getElementById('qo-notes').value=q.notes||''
   document.getElementById('qs-tool-rate').value=q.tool_rate??3
