@@ -781,6 +781,12 @@ let _sitePhotos={}
 
 // ── 업로더 이름 / 날짜 표기 (site_materials.created_at 은 timestamp(무 timezone) 라
 //    UTC 로 보고 KST 로 옮겨야 한국 날짜 기준으로 묶인다)
+// 관리자/대표는 전부, 팀원은 본인이 올린 것만 수정·삭제할 수 있다.
+// 작성자 정보가 없는 예전 자료(uploaded_by_id 없음)는 관리자만 정리 가능.
+const canEditId=ownerId=>!!(me&&(me.isAdmin||(ownerId&&ownerId===me.id)))
+const canEditName=ownerName=>!!(me&&(me.isAdmin||(ownerName&&ownerName===me.name)))
+function denyEdit(){toast('본인이 올린 자료만 삭제할 수 있어요',true)}
+
 let _memberNames=null
 async function loadMemberNames(){
   if(_memberNames)return _memberNames
@@ -870,7 +876,7 @@ function renderPhotos(siteId,siteName,selMode,selected){
         <img class="photo-thumb" data-pid="${f.id}" ${f.file_data?`src="${f.file_data}"`:''} style="opacity:${selMode&&!sel?0.5:1};background:var(--bg)">
         <div style="position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-size:9px;padding:8px 4px 3px;border-radius:0 0 8px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${whoName(f.uploaded_by_id)}</div>
         ${selMode?`<div style="position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;background:${sel?'var(--blue)':'rgba(255,255,255,.85)'};border:2px solid ${sel?'var(--blue)':'#ccc'};display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700">${sel?'✓':''}</div>`:''}
-        ${!selMode?`<button onclick="event.stopPropagation();delFile('${f.id}','${siteId}','${siteName}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer">×</button>`:''}
+        ${!selMode&&canEditId(f.uploaded_by_id)?`<button onclick="event.stopPropagation();delFile('${f.id}','${siteId}','${siteName}','${f.uploaded_by_id||''}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer">×</button>`:''}
       </div>`
     })
     html+='</div>'
@@ -955,7 +961,8 @@ function compressImg(file){
   })
 }
 
-async function delFile(id,siteId,siteName){
+async function delFile(id,siteId,siteName,ownerId){
+  if(!canEditId(ownerId)){denyEdit();return}
   if(!confirm('이 사진을 삭제할까요?'))return
   await db.from('site_files').delete().eq('id',id)
   toast('삭제했어요');openSiteFiles(siteId,siteName)
@@ -999,13 +1006,7 @@ function renderMats(siteId,siteName,mats){
       </div>
     </div>`
   if(mats.length){
-    html+=`<div style="background:var(--bg);border-radius:4px;height:6px;margin-bottom:6px;overflow:hidden"><div style="height:100%;background:var(--blue);border-radius:4px;width:${pct}%;transition:.3s"></div></div>`
-    // 품명별 합계 — 견적서/PDF가 이 합계로 나간다
-    const totals=matTotals(mats)
-    html+=`<div style="background:#EEF4FB;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--navy);line-height:1.7">
-      <b>품목 ${totals.length}종 합계</b> <span style="color:var(--text2)">— 🧾 견적서 / 📄 PDF 는 아래 합계 기준이에요</span>
-      <div style="margin-top:4px">${totals.map(t=>`${t.name} <b>${t.qty}</b>${t.unit?' '+t.unit:''}`).join(' &nbsp;·&nbsp; ')}</div>
-    </div>`
+    html+=`<div style="background:var(--bg);border-radius:4px;height:6px;margin-bottom:2px;overflow:hidden"><div style="height:100%;background:var(--blue);border-radius:4px;width:${pct}%;transition:.3s"></div></div>`
     groupByDate(mats).forEach(grp=>{
       const who=[...new Set(grp.items.map(m=>whoName(m.uploaded_by_id)))]
       html+=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 4px">
@@ -1019,7 +1020,7 @@ function renderMats(siteId,siteName,mats){
             <div style="font-size:14px;font-weight:500">${m.name}</div>
             <div style="font-size:12px;color:var(--text2)">${m.quantity||0} ${cmpUnit(m.unit)||'EA'}${m.notes?' · '+m.notes:''} <span style="opacity:.75">· ${whoName(m.uploaded_by_id)}</span></div>
           </div>
-          <button onclick="delMat('${m.id}','${siteId}','${siteName}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px;line-height:1">×</button>
+          ${canEditId(m.uploaded_by_id)?`<button onclick="delMat('${m.id}','${siteId}','${siteName}','${m.uploaded_by_id||''}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px;line-height:1">×</button>`:''}
         </div>`
       })
     })
@@ -1131,7 +1132,8 @@ async function togMat(id,checked,siteId,siteName){
   openMaterials(siteId,siteName)
 }
 
-async function delMat(id,siteId,siteName){
+async function delMat(id,siteId,siteName,ownerId){
+  if(!canEditId(ownerId)){denyEdit();return}
   if(!confirm('삭제할까요?'))return
   await db.from('site_materials').delete().eq('id',id)
   toast('삭제했어요');openMaterials(siteId,siteName)
@@ -1246,9 +1248,11 @@ async function openMemos(siteId,siteName){
   openSheet(`<div class="st">${siteName} — 메모</div><div class="loading"><div class="spin"></div></div>`)
   await refreshMemos()
 }
+let _memos=[]
 async function refreshMemos(){
   const{data}=await db.from('site_memos').select('*').eq('site_id',_memoSiteId).order('created_at',{ascending:false})
-  renderMemos(data||[])
+  _memos=data||[]
+  renderMemos(_memos)
 }
 function renderMemos(memos){
   const listHtml=memos.length
@@ -1267,8 +1271,9 @@ function renderMemos(memos){
             </div>`
           :`<div style="font-size:14px;color:var(--text);line-height:1.5;white-space:pre-wrap">${m.content}</div>
             <div style="display:flex;gap:10px;margin-top:6px">
+              ${canEditId(m.member_id)||canEditName(m.member_name)?`
               <button onclick="_memoEditId='${m.id}';refreshMemos()" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;padding:0">수정</button>
-              <button onclick="delMemo('${m.id}')" style="background:none;border:none;color:#CBD5E1;font-size:11px;cursor:pointer;padding:0">삭제</button>
+              <button onclick="delMemo('${m.id}','${m.member_id||''}','${(m.member_name||'').replace(/'/g,'')}')" style="background:none;border:none;color:#CBD5E1;font-size:11px;cursor:pointer;padding:0">삭제</button>`:''}
             </div>`
         }
       </div>`}).join('')
@@ -1292,6 +1297,8 @@ async function addMemo(){
   await refreshMemos()
 }
 async function saveEditMemo(id){
+  const mm=(_memos||[]).find(x=>x.id===id)
+  if(mm&&!(canEditId(mm.member_id)||canEditName(mm.member_name))){denyEdit();return}
   const content=document.getElementById('memo-edit-'+id)?.value.trim()
   if(!content){toast('내용을 입력하세요',true);return}
   const{error}=await db.from('site_memos').update({content}).eq('id',id)
@@ -1300,7 +1307,8 @@ async function saveEditMemo(id){
   toast('수정됐어요')
   await refreshMemos()
 }
-async function delMemo(id){
+async function delMemo(id,ownerId,ownerName){
+  if(!(canEditId(ownerId)||canEditName(ownerName))){denyEdit();return}
   if(!confirm('메모를 삭제할까요?'))return
   await db.from('site_memos').delete().eq('id',id)
   toast('삭제됐어요')
@@ -1353,7 +1361,7 @@ function renderDrawings(drawings){
         <div style="display:flex;gap:6px;margin-top:10px">
           <a href="${f.file_data}" download="${f.file_name}" style="flex:1;display:block;padding:9px;background:var(--navy);color:#fff;border-radius:8px;text-align:center;font-size:13px;font-weight:600;text-decoration:none">⬇ 다운로드</a>
           ${isPdf?`<button onclick="viewDrawingPdf('${f.id}')" style="flex:1;padding:9px;background:#EDE9FE;color:#5B21B6;border:.5px solid #C4B5FD;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">👁 PDF 보기</button>`:''}
-          <button onclick="delDrawing('${f.id}','${siteId}','${siteName}')" style="padding:9px 12px;background:none;border:.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text2);font-family:inherit;cursor:pointer">삭제</button>
+          ${canEditName(f.uploaded_by)?`<button onclick="delDrawing('${f.id}','${siteId}','${siteName}','${(f.uploaded_by||'').replace(/'/g,'')}')" style="padding:9px 12px;background:none;border:.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text2);font-family:inherit;cursor:pointer">삭제</button>`:''}
         </div>
       </div>`
     })
@@ -1397,7 +1405,8 @@ function viewDrawingPdf(id){
   })
 }
 
-async function delDrawing(id,siteId,siteName){
+async function delDrawing(id,siteId,siteName,ownerName){
+  if(!canEditName(ownerName)){denyEdit();return}
   if(!confirm('도면을 삭제할까요?'))return
   await db.from('site_drawings').delete().eq('id',id)
   toast('삭제됐어요')
