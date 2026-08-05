@@ -779,11 +779,72 @@ function setSF(f){sFilter=f;rSites()}
 // ── 현장 사진
 let _sitePhotos={}
 
+// ── 업로더 이름 / 날짜 표기 (site_materials.created_at 은 timestamp(무 timezone) 라
+//    UTC 로 보고 KST 로 옮겨야 한국 날짜 기준으로 묶인다)
+let _memberNames=null
+async function loadMemberNames(){
+  if(_memberNames)return _memberNames
+  const{data}=await db.from('members').select('id,name')
+  _memberNames={}
+  ;(data||[]).forEach(m=>_memberNames[m.id]=m.name)
+  return _memberNames
+}
+const whoName=id=>(id&&_memberNames&&_memberNames[id])||'미상'
+const toKST=ts=>{
+  if(!ts)return null
+  const iso=/[Zz]$|[+-]\d\d:?\d\d$/.test(ts)?ts:ts.replace(' ','T')+'Z'
+  const t=new Date(iso).getTime()
+  return isNaN(t)?null:new Date(t+9*36e5)
+}
+const dKeyOf=ts=>{const d=toKST(ts);return d?`${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`:'날짜없음'}
+function dLabel(key){
+  if(key==='날짜없음')return key
+  const t=toKST(new Date().toISOString())
+  const tk=`${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())}`
+  const yd=new Date(t.getTime()-864e5)
+  const yk=`${yd.getUTCFullYear()}-${pad(yd.getUTCMonth()+1)}-${pad(yd.getUTCDate())}`
+  const[y,m,d]=key.split('-').map(Number)
+  const w=['일','월','화','수','목','금','토'][new Date(Date.UTC(y,m-1,d)).getUTCDay()]
+  const base=`${m}월 ${d}일 (${w})`
+  return key===tk?`오늘 · ${base}`:key===yk?`어제 · ${base}`:base
+}
+// 날짜별로 묶고 최신 날짜부터
+function groupByDate(list){
+  const g={}
+  list.forEach(x=>{const k=dKeyOf(x.created_at);(g[k]=g[k]||[]).push(x)})
+  return Object.keys(g).sort((a,b)=>b.localeCompare(a)).map(k=>({key:k,label:dLabel(k),items:g[k]}))
+}
+
 async function openSiteFiles(siteId,siteName){
   openSheet(`<div class="st">${siteName} — 현장 사진</div><div class="loading"><div class="spin"></div></div>`)
-  const{data}=await db.from('site_files').select('*').eq('site_id',siteId).order('created_at',{ascending:false})
+  // 사진 한 장이 80~110KB라 전부 한 번에 받으면 DB가 타임아웃난다(206장 현장에서 확인).
+  // 목록은 메타데이터로 먼저 그리고 이미지는 나눠서 채운다.
+  const[{data}]=await Promise.all([
+    db.from('site_files').select('id,file_name,file_type,created_at,uploaded_by_id')
+      .eq('site_id',siteId).order('created_at',{ascending:false}),
+    loadMemberNames()
+  ])
   _sitePhotos[siteId]=data||[]
   renderPhotos(siteId,siteName,false,[])
+  fillPhotoData(siteId)
+}
+
+// 이미지 데이터를 20장씩 받아 채운다
+async function fillPhotoData(siteId){
+  const files=_sitePhotos[siteId]||[]
+  const todo=files.filter(f=>!f.file_data).map(f=>f.id)
+  for(let i=0;i<todo.length;i+=20){
+    const chunk=todo.slice(i,i+20)
+    const{data,error}=await db.from('site_files').select('id,file_data').in('id',chunk)
+    if(error)break
+    ;(data||[]).forEach(row=>{
+      const f=files.find(x=>x.id===row.id)
+      if(f)f.file_data=row.file_data
+      const img=document.querySelector(`img[data-pid="${row.id}"]`)
+      if(img&&!img.src.startsWith('data:')){img.src=row.file_data;img.style.background='none'}
+    })
+    if(!document.getElementById('sc'))return   // 시트가 닫히면 중단
+  }
 }
 
 function renderPhotos(siteId,siteName,selMode,selected){
@@ -794,16 +855,26 @@ function renderPhotos(siteId,siteName,selMode,selected){
       <input type="file" id="fi-${siteId}" accept="image/*" multiple style="display:none" onchange="uploadPhotos('${siteId}','${siteName}',this)">
       ${files.length?`<button class="bs" style="color:var(--blue)" onclick="renderPhotos('${siteId}','${siteName}',${!selMode},[])">${selMode?'취소':'선택 다운로드'}</button>`:''}
     </div>
-    <div class="photo-grid">`
-  files.forEach((f,i)=>{
-    const sel=selected.includes(i)
-    html+=`<div style="position:relative;cursor:pointer" onclick="${selMode?`togglePhotoSel('${siteId}','${siteName}',${i},[${selected.join(',')}])`:`viewPhoto(${i},'${siteId}','${(f.file_name||'사진').replace(/'/g,'')}')`}">
-      <img class="photo-thumb" src="${f.file_data}" style="opacity:${selMode&&!sel?0.5:1}">
-      ${selMode?`<div style="position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;background:${sel?'var(--blue)':'rgba(255,255,255,.85)'};border:2px solid ${sel?'var(--blue)':'#ccc'};display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700">${sel?'✓':''}</div>`:''}
-      ${!selMode?`<button onclick="event.stopPropagation();delFile('${f.id}','${siteId}','${siteName}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer">×</button>`:''}
-    </div>`
+  `
+  // 업로드 날짜별로 나눠서 보여준다 (인덱스는 원본 배열 기준을 유지해야 보기/선택이 맞는다)
+  const idxOf=new Map(files.map((f,i)=>[f,i]))
+  groupByDate(files).forEach(grp=>{
+    const uploaders=[...new Set(grp.items.map(f=>whoName(f.uploaded_by_id)))]
+    html+=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 6px">
+      <span style="font-size:12px;font-weight:700;color:var(--navy)">${grp.label}</span>
+      <span style="font-size:11px;color:var(--text2)">${grp.items.length}장 · ${uploaders.join(', ')}</span>
+    </div><div class="photo-grid" style="margin-top:0">`
+    grp.items.forEach(f=>{
+      const i=idxOf.get(f), sel=selected.includes(i)
+      html+=`<div style="position:relative;cursor:pointer" onclick="${selMode?`togglePhotoSel('${siteId}','${siteName}',${i},[${selected.join(',')}])`:`viewPhoto(${i},'${siteId}','${(f.file_name||'사진').replace(/'/g,'')}')`}">
+        <img class="photo-thumb" data-pid="${f.id}" ${f.file_data?`src="${f.file_data}"`:''} style="opacity:${selMode&&!sel?0.5:1};background:var(--bg)">
+        <div style="position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-size:9px;padding:8px 4px 3px;border-radius:0 0 8px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${whoName(f.uploaded_by_id)}</div>
+        ${selMode?`<div style="position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;background:${sel?'var(--blue)':'rgba(255,255,255,.85)'};border:2px solid ${sel?'var(--blue)':'#ccc'};display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700">${sel?'✓':''}</div>`:''}
+        ${!selMode?`<button onclick="event.stopPropagation();delFile('${f.id}','${siteId}','${siteName}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer">×</button>`:''}
+      </div>`
+    })
+    html+='</div>'
   })
-  html+='</div>'
   if(!files.length) html+='<div style="text-align:center;color:var(--text2);font-size:13px;padding:24px 0">아직 사진이 없어요</div>'
   if(selMode){
     html+=`<div style="position:sticky;bottom:0;background:#fff;padding:12px 0 4px;margin-top:12px;border-top:.5px solid var(--border)">
@@ -825,8 +896,14 @@ function togglePhotoSel(siteId,siteName,idx,current){
   renderPhotos(siteId,siteName,true,sel)
 }
 
-function viewPhoto(idx,siteId,name){
+async function viewPhoto(idx,siteId,name){
   const f=(_sitePhotos[siteId]||[])[idx];if(!f)return
+  if(!f.file_data){   // 아직 안 받은 사진이면 그 장만 먼저 받는다
+    openSheet(`<div class="st">${name||'사진'}</div><div class="loading"><div class="spin"></div>불러오는 중...</div>`)
+    const{data}=await db.from('site_files').select('file_data').eq('id',f.id).single()
+    if(data)f.file_data=data.file_data
+    if(!f.file_data){toast('사진을 불러오지 못했어요',true);return}
+  }
   openSheet(`<div class="st">${name||'사진'}</div>
     <img src="${f.file_data}" style="width:100%;border-radius:10px;margin-bottom:14px">
     <a href="${f.file_data}" download="${f.file_name||'현장사진.jpg'}" style="display:block;width:100%;padding:13px;background:var(--navy);color:#fff;border-radius:10px;text-align:center;font-size:15px;font-weight:600;text-decoration:none">⬇ 사진 다운로드</a>`)
@@ -839,6 +916,12 @@ async function dlPhotos(siteId,selected){
   for(let i=0;i<selected.length;i++){
     await new Promise(r=>setTimeout(r,400))
     const f=files[selected[i]]
+    if(!f)continue
+    if(!f.file_data){   // 아직 안 받은 사진은 받아서 내려준다
+      const{data}=await db.from('site_files').select('file_data').eq('id',f.id).single()
+      if(!data?.file_data)continue
+      f.file_data=data.file_data
+    }
     const a=document.createElement('a')
     a.href=f.file_data;a.download=f.file_name||`현장사진_${i+1}.jpg`
     document.body.appendChild(a);a.click();document.body.removeChild(a)
@@ -881,8 +964,24 @@ async function delFile(id,siteId,siteName){
 // ── 현장 자재
 async function openMaterials(siteId,siteName){
   openSheet(`<div class="st">${siteName} — 사용자재</div><div class="loading"><div class="spin"></div></div>`)
-  const{data}=await db.from('site_materials').select('*').eq('site_id',siteId).order('created_at')
+  const[{data}]=await Promise.all([
+    db.from('site_materials').select('*').eq('site_id',siteId).order('created_at'),
+    loadMemberNames()
+  ])
   renderMats(siteId,siteName,data||[])
+}
+
+// 같은 자재가 날짜별로 나뉘어 등록되므로 품명 기준으로 합산한다
+function matTotals(mats){
+  const g={}
+  mats.forEach(m=>{
+    const k=cmpNorm(m.name)
+    if(!g[k])g[k]={name:m.name,unit:cmpUnit(m.unit)||'EA',qty:0,done:0,cnt:0}
+    g[k].qty+=parseFloat(m.quantity)||0
+    g[k].cnt++
+    if(m.is_checked)g[k].done++
+  })
+  return Object.values(g).sort((a,b)=>a.name.localeCompare(b.name,'ko'))
 }
 
 function renderMats(siteId,siteName,mats){
@@ -900,16 +999,29 @@ function renderMats(siteId,siteName,mats){
       </div>
     </div>`
   if(mats.length){
-    html+=`<div style="background:var(--bg);border-radius:4px;height:6px;margin-bottom:14px;overflow:hidden"><div style="height:100%;background:var(--blue);border-radius:4px;width:${pct}%;transition:.3s"></div></div>`
-    mats.forEach(m=>{
-      html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:.5px solid var(--border)">
-        <div onclick="togMat('${m.id}',${m.is_checked},'${siteId}','${siteName}')" style="width:24px;height:24px;border-radius:6px;border:2px solid ${m.is_checked?'var(--blue)':'var(--border)'};background:${m.is_checked?'var(--blue)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700">${m.is_checked?'✓':''}</div>
-        <div style="flex:1;${m.is_checked?'text-decoration:line-through;opacity:.5':''}">
-          <div style="font-size:14px;font-weight:500">${m.name}</div>
-          ${m.quantity?`<div style="font-size:12px;color:var(--text2)">${m.quantity} ${m.unit||'EA'}${m.notes?' · '+m.notes:''}</div>`:''}
-        </div>
-        <button onclick="delMat('${m.id}','${siteId}','${siteName}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px;line-height:1">×</button>
+    html+=`<div style="background:var(--bg);border-radius:4px;height:6px;margin-bottom:6px;overflow:hidden"><div style="height:100%;background:var(--blue);border-radius:4px;width:${pct}%;transition:.3s"></div></div>`
+    // 품명별 합계 — 견적서/PDF가 이 합계로 나간다
+    const totals=matTotals(mats)
+    html+=`<div style="background:#EEF4FB;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--navy);line-height:1.7">
+      <b>품목 ${totals.length}종 합계</b> <span style="color:var(--text2)">— 🧾 견적서 / 📄 PDF 는 아래 합계 기준이에요</span>
+      <div style="margin-top:4px">${totals.map(t=>`${t.name} <b>${t.qty}</b>${t.unit?' '+t.unit:''}`).join(' &nbsp;·&nbsp; ')}</div>
+    </div>`
+    groupByDate(mats).forEach(grp=>{
+      const who=[...new Set(grp.items.map(m=>whoName(m.uploaded_by_id)))]
+      html+=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 4px">
+        <span style="font-size:12px;font-weight:700;color:var(--navy)">${grp.label}</span>
+        <span style="font-size:11px;color:var(--text2)">${grp.items.length}건 · ${who.join(', ')}</span>
       </div>`
+      grp.items.forEach(m=>{
+        html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:.5px solid var(--border)">
+          <div onclick="togMat('${m.id}',${m.is_checked},'${siteId}','${siteName}')" style="width:24px;height:24px;border-radius:6px;border:2px solid ${m.is_checked?'var(--blue)':'var(--border)'};background:${m.is_checked?'var(--blue)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700">${m.is_checked?'✓':''}</div>
+          <div style="flex:1;${m.is_checked?'text-decoration:line-through;opacity:.5':''}">
+            <div style="font-size:14px;font-weight:500">${m.name}</div>
+            <div style="font-size:12px;color:var(--text2)">${m.quantity||0} ${cmpUnit(m.unit)||'EA'}${m.notes?' · '+m.notes:''} <span style="opacity:.75">· ${whoName(m.uploaded_by_id)}</span></div>
+          </div>
+          <button onclick="delMat('${m.id}','${siteId}','${siteName}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px;line-height:1">×</button>
+        </div>`
+      })
     })
   }else{
     html+=`<div class="empty"><div class="ei">📦</div><div style="font-size:14px">등록된 자재가 없어요</div>${me.isAdmin?'<div style="font-size:12px;margin-top:4px;opacity:.7">+ 버튼으로 추가하세요</div>':''}</div>`
@@ -995,13 +1107,15 @@ async function saveMat(){
   const qty=parseFloat(qtyEl?.value)||0
   if(qty<=0){toast('수량을 입력하세요',true);return}
   try{
-    // 동일 자재 누적 확인
-    const{data:rows,error}=await db.from('site_materials').select('*').eq('site_id',_matSiteId).eq('name',_matSelected.n)
-    const exist=rows&&rows.length>0?rows[0]:null
+    // 같은 날 · 같은 사람이 올린 같은 자재만 누적한다.
+    // 날짜가 다르면 새 줄로 남겨야 날짜별로 누가 얼마나 썼는지 볼 수 있다.
+    const{data:rows}=await db.from('site_materials').select('*').eq('site_id',_matSiteId).eq('name',_matSelected.n)
+    const todayKey=dKeyOf(new Date().toISOString())
+    const exist=(rows||[]).find(r=>dKeyOf(r.created_at)===todayKey&&r.uploaded_by_id===me.id)
     if(exist){
       const newQty=(parseFloat(exist.quantity)||0)+qty
       await db.from('site_materials').update({quantity:newQty}).eq('id',exist.id)
-      toast(`${_matSelected.n} → ${newQty}${_matSelected.u} 누적됐어요`)
+      toast(`${_matSelected.n} → 오늘 ${newQty}${_matSelected.u} 누적됐어요`)
     }else{
       await db.from('site_materials').insert({site_id:_matSiteId,name:_matSelected.n,quantity:qty,unit:_matSelected.u,is_checked:false,uploaded_by_id:me.id})
       toast(`${_matSelected.n} ${qty}${_matSelected.u} 추가됐어요`)
@@ -1027,15 +1141,17 @@ function printMatsPDF(siteName){
   const mats=_matsData
   if(!mats.length){toast('자재가 없어요',true);return}
   const today_str=new Date().toLocaleDateString('ko-KR')
-  const checked=mats.filter(m=>m.is_checked).length
-  const totalQty=mats.reduce((a,m)=>a+(parseFloat(m.quantity)||0),0)
-  const rows=mats.map((m,i)=>`
+  // 날짜별로 나뉜 등록분을 품명 기준으로 합산해서 출력한다
+  const totals=matTotals(mats)
+  const checked=totals.filter(t=>t.done===t.cnt).length
+  const totalQty=totals.reduce((a,t)=>a+t.qty,0)
+  const rows=totals.map((t,i)=>`
     <tr style="background:${i%2===0?'#F5F8FC':'#fff'}">
       <td style="text-align:center">${i+1}</td>
-      <td>${m.name}</td>
-      <td style="text-align:center">${m.unit||'EA'}</td>
-      <td style="text-align:right;font-weight:600">${m.quantity||0}</td>
-      <td style="text-align:center;color:${m.is_checked?'#27AE60':'#ccc'};font-size:16px">${m.is_checked?'✓':'○'}</td>
+      <td>${t.name}${t.cnt>1?`<span style="font-size:10px;color:#888"> (${t.cnt}회 입고 합계)</span>`:''}</td>
+      <td style="text-align:center">${t.unit}</td>
+      <td style="text-align:right;font-weight:600">${t.qty}</td>
+      <td style="text-align:center;color:${t.done===t.cnt?'#27AE60':'#ccc'};font-size:16px">${t.done===t.cnt?'✓':'○'}</td>
     </tr>`).join('')
   const html=`<!DOCTYPE html>
 <html lang="ko">
@@ -1078,8 +1194,8 @@ td{padding:7px 10px;border-bottom:1px solid #DDE6F0;font-size:13px}
   <tbody>${rows}</tbody>
 </table>
 <div class="summary">
-  <span>총 ${mats.length}개 품목</span>
-  <span>완료 ${checked} / ${mats.length} &nbsp;·&nbsp; 합계 수량 ${totalQty}</span>
+  <span>총 ${totals.length}개 품목 <span style="font-weight:400;color:#888">(등록 ${mats.length}건 합산)</span></span>
+  <span>완료 ${checked} / ${totals.length} &nbsp;·&nbsp; 합계 수량 ${totalQty}</span>
 </div>
 <div class="footer">도아전기 (도아랩) · ${today_str} 출력</div>
 <button class="print-btn" onclick="window.print()">📄 PDF 저장 / 인쇄</button>
