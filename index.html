@@ -327,6 +327,25 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 </div>
 
 <!-- 카탈로그 관리 오버레이 (관리자 전용) -->
+<div id="matoverlay" class="full-ov">
+  <div class="qo-hdr">
+    <button class="qo-back" onclick="closeMatOverlay()">‹</button>
+    <h2 id="mo-title">자재 추가</h2>
+  </div>
+  <div class="qo-info" style="padding:10px 12px">
+    <input class="fi" id="mo-search" placeholder="🔍 자재 검색..." autocomplete="off" oninput="renderMatBody()">
+  </div>
+  <div class="qo-tabs" id="mo-tabs"></div>
+  <div class="qo-body" id="mo-body"></div>
+  <div class="qo-foot">
+    <div class="qo-grand">
+      <span class="qo-grand-label">선택 <span id="mo-cnt">0</span>종</span>
+      <span class="qo-grand-val" id="mo-sum">0개</span>
+    </div>
+    <button class="btn bp" onclick="saveMatsBulk()">한번에 추가하기</button>
+  </div>
+</div>
+
 <div id="catoverlay" class="full-ov">
   <div class="qo-hdr">
     <button class="qo-back" onclick="closeCatalogMgr()">‹</button>
@@ -621,6 +640,15 @@ function pushNotif(title,body){
     }).catch(()=>new Notification(title,{body,icon:'./icon-192.png'}))
   }
 }
+// Realtime 은 행 단위로 오므로, 짧은 시간에 몰린 건은 하나로 묶어 한 번만 알린다
+const _nBuf={}
+function notifBatch(key,title,bodyFn,delay=2500){
+  const b=_nBuf[key]||(_nBuf[key]={n:0})
+  b.n++
+  clearTimeout(b.t)
+  b.t=setTimeout(()=>{const n=b.n;delete _nBuf[key];pushNotif(title,bodyFn(n))},delay)
+}
+
 function setupRealtime(){
   if(window._realtimeCh)db.removeChannel(window._realtimeCh)
   window._realtimeCh=db.channel('doa-updates')
@@ -628,10 +656,14 @@ function setupRealtime(){
       if(p.new.member_id!==me?.id)pushNotif('💬 '+p.new.member_name,'메모: '+p.new.content.slice(0,40))
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'site_files'},p=>{
-      if(p.new.uploaded_by_id!==me?.id)pushNotif('📷 사진 업로드','현장에 새 사진이 추가됐어요')
+      if(p.new.uploaded_by_id!==me?.id)
+        notifBatch('files','📷 사진 업로드',n=>n>1?`사진 ${n}장이 추가됐어요`:'현장에 새 사진이 추가됐어요')
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'site_materials'},p=>{
-      if(p.new.uploaded_by_id!==me?.id)pushNotif('📦 자재 추가',`'${p.new.name}' 항목이 추가됐어요`)
+      if(p.new.uploaded_by_id!==me?.id){
+        const nm=p.new.name
+        notifBatch('mats','📦 자재 추가',n=>n>1?`'${nm}' 외 ${n-1}건이 추가됐어요`:`'${nm}' 항목이 추가됐어요`)
+      }
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'site_materials'},p=>{
       if(p.new.is_checked!==p.old?.is_checked&&p.new.uploaded_by_id!==me?.id)
@@ -938,10 +970,18 @@ async function dlPhotos(siteId,selected){
 async function uploadPhotos(siteId,siteName,input){
   const files=Array.from(input.files);if(!files.length)return
   document.getElementById('up-prog').style.display='block'
+  // 한 장씩 넣으면 알림이 장수만큼 나가므로 압축 후 한 번에 저장한다
+  const rows=[]
   for(const file of files){
     const b64=await compressImg(file)
-    await db.from('site_files').insert({site_id:siteId,file_name:file.name,file_data:b64,file_type:file.type,uploaded_by_id:me.id})
+    rows.push({site_id:siteId,file_name:file.name,file_data:b64,file_type:file.type,uploaded_by_id:me.id})
   }
+  // 용량이 커서 한 문장에 다 담기 어려우면 20장 단위로 나눈다
+  for(let i=0;i<rows.length;i+=20){
+    const{error}=await db.from('site_files').insert(rows.slice(i,i+20))
+    if(error){toast('업로드 실패: '+error.message,true);break}
+  }
+  input.value=''
   toast(`${files.length}장 업로드 완료`)
   openSiteFiles(siteId,siteName)
 }
@@ -1030,101 +1070,106 @@ function renderMats(siteId,siteName,mats){
   document.getElementById('sc').innerHTML=html
 }
 
+// ── 자재 일괄 추가: 견적서 작성처럼 여러 품목 수량을 한 화면에서 담고 한 번에 저장한다.
+//    한 건씩 넣으면 등록도 번거롭고 알림이 건건이 나간다.
+let _moQtys={}, _moCatTab=CATS[0]
+
 async function addMatForm(siteId,siteName){
-  _matSiteId=siteId; _matSiteName=siteName; _matSelected=null
+  _matSiteId=siteId; _matSiteName=siteName
+  _moQtys={}; _moCatTab=CATS[0]
   await loadMatPickList()
-  openSheet(`<div class="st">자재 선택 — ${siteName}</div>
-    <div class="fg">
-      <input class="fi" id="mat-search" oninput="filterMats()" placeholder="🔍 자재 검색..." autocomplete="off">
-    </div>
-    <div id="mat-pick" style="border:.5px solid var(--border);border-radius:8px;max-height:240px;overflow-y:auto;margin-bottom:10px"></div>
-    <div id="mat-sel-box" style="display:none;background:#E8F0F8;border-radius:8px;padding:10px 14px;margin-bottom:10px">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:2px">선택된 자재</div>
-      <div style="font-size:14px;font-weight:600;color:var(--navy)" id="mat-sel-name"></div>
-    </div>
-    <div class="fr">
-      <div class="fg"><label class="fl">수량</label><input class="fi" id="mat-qty" type="number" value="1" min="1" style="text-align:right"></div>
-      <div class="fg"><label class="fl">단위</label><input class="fi" id="mat-unit-show" readonly style="background:var(--bg);color:var(--text2)"></div>
-    </div>
-    <button class="btn bp" onclick="saveMat()">추가 (동일 자재 자동 누적)</button>`)
-  renderMatPick(MAT_PICK_LIST)
-  // 이벤트 위임 방식으로 클릭 처리
-  document.getElementById('mat-pick').addEventListener('click',function(e){
-    const row=e.target.closest('[data-name]')
-    if(row) selectMatFromEl(row)
+  document.getElementById('mo-title').textContent=siteName
+  document.getElementById('mo-search').value=''
+  document.getElementById('mo-tabs').innerHTML=CATS.map(c=>`<button class="qo-tab${c===_moCatTab?' on':''}" onclick="setMoCat('${c}')">${c}</button>`).join('')
+  renderMatBody();calcMo()
+  document.getElementById('matoverlay').classList.add('on')
+  closeSheet()
+}
+function closeMatOverlay(){
+  document.getElementById('matoverlay').classList.remove('on')
+  if(_matSiteId)openMaterials(_matSiteId,_matSiteName)
+}
+function setMoCat(c){
+  _moCatTab=c
+  const s=document.getElementById('mo-search');if(s)s.value=''
+  document.querySelectorAll('#mo-tabs .qo-tab').forEach(b=>b.classList.toggle('on',b.textContent===c))
+  renderMatBody()
+}
+
+function renderMatBody(){
+  const q=(document.getElementById('mo-search')?.value||'').trim().toLowerCase()
+  // 검색 중이면 카테고리를 무시하고 전체에서 찾는다
+  const list=q?catalogItems.filter(i=>i.name.toLowerCase().includes(q))
+              :catalogItems.filter(i=>i.cat===_moCatTab)
+  const body=document.getElementById('mo-body')
+  if(!list.length){
+    body.innerHTML=`<div class="empty" style="padding:32px 20px"><div class="ei">📦</div><div style="font-size:13px">${q?'검색 결과가 없어요':'이 카테고리에 품목이 없어요'}</div></div>`
+    return
+  }
+  body.innerHTML=list.map(item=>{
+    const qty=_moQtys[item.id]||0, unit=cmpUnit(item.unit)||'EA'
+    return `<div class="qc-item${qty>0?' active':''}" id="mo-${item.id}">
+      <div class="qc-meta">
+        <div class="qc-name">${item.name}</div>
+        <div class="qc-sub">${[item.spec,q?item.cat:''].filter(Boolean).join(' · ')||unit}</div>
+      </div>
+      <div class="qc-right">
+        <div class="qc-price">${unit}</div>
+        <div class="qc-qty-wrap">
+          <button onclick="adjMo('${item.id}',-1)">−</button>
+          <input type="number" min="0" step="any" value="${qty||''}" placeholder="0"
+            onchange="setMo('${item.id}',this.value)" oninput="setMo('${item.id}',this.value)">
+          <button onclick="adjMo('${item.id}',1)">+</button>
+        </div>
+      </div>
+    </div>`
+  }).join('')
+}
+function adjMo(id,d){_moQtys[id]=Math.max(0,Math.round(((_moQtys[id]||0)+d)*100)/100);renderMatBody();calcMo()}
+function setMo(id,v){
+  _moQtys[id]=Math.max(0,parseFloat(v)||0)
+  const el=document.getElementById('mo-'+id)
+  if(el)el.className='qc-item'+(_moQtys[id]>0?' active':'')
+  calcMo()
+}
+function calcMo(){
+  const sel=Object.entries(_moQtys).filter(([,v])=>v>0)
+  document.getElementById('mo-cnt').textContent=sel.length
+  document.getElementById('mo-sum').textContent=sel.reduce((a,[,v])=>a+v,0).toLocaleString()+'개'
+}
+
+async function saveMatsBulk(){
+  const sel=Object.entries(_moQtys).filter(([,v])=>v>0)
+  if(!sel.length){toast('수량을 입력한 자재가 없어요',true);return}
+  const todayKey=dKeyOf(new Date().toISOString())
+  const{data:existing}=await db.from('site_materials').select('*').eq('site_id',_matSiteId)
+  const inserts=[],updates=[]
+  sel.forEach(([id,qty])=>{
+    const item=catalogItems.find(c=>c.id===id);if(!item)return
+    // 같은 날·같은 사람이 올린 같은 자재면 누적
+    const hit=(existing||[]).find(r=>cmpNorm(r.name)===cmpNorm(item.name)
+      &&dKeyOf(r.created_at)===todayKey&&r.uploaded_by_id===me.id)
+    if(hit)updates.push({id:hit.id,quantity:(parseFloat(hit.quantity)||0)+qty})
+    else inserts.push({site_id:_matSiteId,name:item.name,quantity:qty,
+      unit:cmpUnit(item.unit)||'EA',is_checked:false,uploaded_by_id:me.id})
   })
+  // 알림이 한 번만 가도록 INSERT 는 한 문장으로 처리한다
+  if(inserts.length){
+    const{error}=await db.from('site_materials').insert(inserts)
+    if(error){toast('저장 실패: '+error.message,true);return}
+  }
+  for(const u of updates)await db.from('site_materials').update({quantity:u.quantity}).eq('id',u.id)
+  toast(`자재 ${sel.length}종 등록됐어요`)
+  _moQtys={}
+  closeMatOverlay()
 }
 
 // 자재 선택 목록 = 견적 카탈로그 (품명을 한 곳에서만 관리한다)
 // 단가는 카탈로그 관리에서 카테고리별로 수정한다
-let MAT_PICK_LIST=[]
 async function loadMatPickList(){
   const{data}=await db.from('catalog_items').select('*').order('sort_order').order('created_at')
-  if(data){
-    catalogItems=data
-    MAT_PICK_LIST=data.map(c=>({n:c.name,u:cmpUnit(c.unit)||'EA',cat:c.cat,noPrice:!c.price}))
-      .sort((a,b)=>(CATS.indexOf(a.cat)-CATS.indexOf(b.cat))||a.n.localeCompare(b.n,'ko'))
-  }
-  return MAT_PICK_LIST
-}
-
-function renderMatPick(list){
-  const pick=document.getElementById('mat-pick')
-  if(!pick)return
-  if(!list.length){pick.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">검색 결과 없음</div>';return}
-  pick.innerHTML=list.map(m=>`
-    <div data-name="${m.n}" data-unit="${m.u}"
-      style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:.5px solid var(--border);cursor:pointer;font-size:13px;background:${_matSelected&&_matSelected.n===m.n?'#DBEAFE':'transparent'}">
-      <span>${m.n}<span style="font-size:10px;color:var(--text2);margin-left:6px">${m.cat}</span>${m.noPrice?'<span style="font-size:10px;color:#B45309;background:#FEF3C7;border-radius:4px;padding:1px 5px;margin-left:5px">단가 미입력</span>':''}</span>
-      <span style="font-size:11px;color:var(--text2);flex-shrink:0;margin-left:8px">${m.u}</span>
-    </div>`).join('')
-}
-
-function filterMats(){
-  const q=(document.getElementById('mat-search')?.value||'').toLowerCase()
-  const filtered=q?MAT_PICK_LIST.filter(m=>m.n.toLowerCase().includes(q)):MAT_PICK_LIST
-  renderMatPick(filtered)
-}
-
-function selectMatFromEl(el){
-  const name=el.dataset.name, unit=el.dataset.unit
-  _matSelected={n:name,u:unit}
-  // UI 업데이트
-  const nameEl=document.getElementById('mat-sel-name')
-  const boxEl=document.getElementById('mat-sel-box')
-  const unitEl=document.getElementById('mat-unit-show')
-  if(nameEl) nameEl.textContent=name
-  if(boxEl) boxEl.style.display='block'
-  if(unitEl) unitEl.value=unit
-  // 선택 강조
-  document.querySelectorAll('#mat-pick [data-name]').forEach(d=>{
-    d.style.background=d.dataset.name===name?'#DBEAFE':'transparent'
-  })
-}
-
-async function saveMat(){
-  if(!_matSelected){toast('자재를 먼저 선택하세요',true);return}
-  const qtyEl=document.getElementById('mat-qty')
-  const qty=parseFloat(qtyEl?.value)||0
-  if(qty<=0){toast('수량을 입력하세요',true);return}
-  try{
-    // 같은 날 · 같은 사람이 올린 같은 자재만 누적한다.
-    // 날짜가 다르면 새 줄로 남겨야 날짜별로 누가 얼마나 썼는지 볼 수 있다.
-    const{data:rows}=await db.from('site_materials').select('*').eq('site_id',_matSiteId).eq('name',_matSelected.n)
-    const todayKey=dKeyOf(new Date().toISOString())
-    const exist=(rows||[]).find(r=>dKeyOf(r.created_at)===todayKey&&r.uploaded_by_id===me.id)
-    if(exist){
-      const newQty=(parseFloat(exist.quantity)||0)+qty
-      await db.from('site_materials').update({quantity:newQty}).eq('id',exist.id)
-      toast(`${_matSelected.n} → 오늘 ${newQty}${_matSelected.u} 누적됐어요`)
-    }else{
-      await db.from('site_materials').insert({site_id:_matSiteId,name:_matSelected.n,quantity:qty,unit:_matSelected.u,is_checked:false,uploaded_by_id:me.id})
-      toast(`${_matSelected.n} ${qty}${_matSelected.u} 추가됐어요`)
-    }
-    openMaterials(_matSiteId,_matSiteName)
-  }catch(err){
-    toast('오류가 발생했어요: '+err.message,true)
-  }
+  if(data)catalogItems=data.sort((a,b)=>(CATS.indexOf(a.cat)-CATS.indexOf(b.cat))||a.name.localeCompare(b.name,'ko'))
+  return catalogItems
 }
 
 async function togMat(id,checked,siteId,siteName){
@@ -1738,7 +1783,7 @@ ${rows.map(r=>{const g=r.uCost-r.qCost;return `<tr><td class="c">${r.isLabor?'�
 let scY=new Date().getFullYear(),scMo=new Date().getMonth()
 const ECOLS=['#1A3A5C','#2E6DA4','#27AE60','#E67E22','#E74C3C','#8E44AD']
 let evtMems=[]
-let _matSiteId='',_matSiteName='',_matSelected=null,_matsData=[]
+let _matSiteId='',_matSiteName='',_matsData=[]
 
 async function rSchedule(){
   document.getElementById('hdr-t').textContent='일정 관리'
