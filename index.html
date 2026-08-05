@@ -159,6 +159,15 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .cm-edit:active{color:var(--navy)}
 .cm-del{background:none;border:none;color:#CBD5E1;font-size:20px;cursor:pointer;padding:0 2px;line-height:1}
 .cm-del:active{color:var(--red)}
+/* 달력 — 남은 화면 높이를 꽉 채운다 */
+.cal-wrap{display:flex;flex-direction:column;background:var(--white);border:.5px solid var(--border);
+  border-radius:12px;overflow:hidden;margin-bottom:14px;height:calc(100dvh - 218px);min-height:380px}
+.cal-head{flex-shrink:0;display:grid;grid-template-columns:repeat(7,1fr);background:var(--navy)}
+.cal-body{flex:1;display:flex;flex-direction:column;min-height:0}
+.cal-week{position:relative;flex:1 1 0;border-bottom:.5px solid var(--border)}
+.cal-week:last-child{border-bottom:none}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);height:100%}
+
 /* ══════════════ PC 레이아웃 (1024px 이상에서만 적용) ══════════════
    screen 한정이라 인쇄/PDF와 모바일 화면에는 영향이 없다 */
 @media screen and (min-width:1024px){
@@ -199,6 +208,9 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   .bs:hover{background:var(--bg)}
 
   .fab{right:36px;bottom:32px;transform:none;width:56px;height:56px;font-size:30px}
+
+  /* 달력: PC는 헤더/여백이 달라 높이를 다시 잡는다 */
+  .cal-wrap{height:calc(100vh - 243px);min-height:420px}
 
   /* 바텀시트 → 가운데 모달 */
   #sheet{top:50%;bottom:auto;width:min(92vw,620px);max-width:620px;max-height:86vh;
@@ -1625,7 +1637,10 @@ async function rSchedule(){
   const events=evts||[]
   // ── 주 단위로 나눠, 기간 일정을 여러 칸에 걸친 하나의 띠로 그린다.
   // 날짜 칸마다 따로 그리면 칸 폭에 글씨가 갇혀 무슨 일정인지 알 수 없다.
-  const MAXLANE=4, LANE_H=15, NUM_H=24
+  // 화면이 넓을수록 칸·글씨를 키운다
+  const wide=innerWidth>=1024
+  const MAXLANE=wide?6:4, LANE_H=wide?21:18, NUM_H=wide?30:26
+  const FS_BAR=wide?12:10.5, FS_NUM=wide?14:12, NUM_D=wide?26:22
   const dkey=kd
   const parse=s=>new Date(s+'T00:00:00')
   const dayDiff=(a,b)=>Math.round((parse(b)-parse(a))/864e5)
@@ -1644,10 +1659,11 @@ async function rSchedule(){
     <span style="font-size:15px;font-weight:600;color:var(--navy)">${scY}년 ${scMo+1}월</span>
     <button class="bs" onclick="scMo<11?scMo++:(scY++,scMo=0);rSchedule()">▶</button>
   </div>
-  <div style="background:var(--white);border:.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px">
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--navy)">
-      ${days.map((d,i)=>`<div style="text-align:center;font-size:11px;font-weight:600;color:${i===0?'#FCA5A5':i===6?'#93C5FD':'rgba(255,255,255,.8)'};padding:8px 0">${d}</div>`).join('')}
-    </div>`
+  <div class="cal-wrap">
+    <div class="cal-head">
+      ${days.map((d,i)=>`<div style="text-align:center;font-size:${wide?13:12}px;font-weight:600;color:${i===0?'#FCA5A5':i===6?'#93C5FD':'rgba(255,255,255,.8)'};padding:${wide?10:9}px 0">${d}</div>`).join('')}
+    </div>
+    <div class="cal-body">`
 
   weeks.forEach(wk=>{
     // 이 주에 걸치는 일정을 레인(줄)에 배치. 긴 일정을 위쪽에 둔다.
@@ -1670,14 +1686,14 @@ async function rSchedule(){
       sg.lane=li
     })
     const laneCount=Math.max(1,lanes.length)+(over.some(n=>n)?1:0)
-    const rowH=NUM_H+laneCount*LANE_H+3
+    const minH=NUM_H+laneCount*LANE_H+3   // 이 주에 필요한 최소 높이 (남는 공간은 균등 분배)
 
-    cal+=`<div style="position:relative;border-bottom:.5px solid var(--border)">
-      <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+    cal+=`<div class="cal-week" style="min-height:${minH}px">
+      <div class="cal-days">
         ${wk.days.map((d,i)=>{
           const ds=dkey(d),inMo=d.getMonth()===scMo,isT=ds===td,dow=d.getDay()
-          return `<div onclick="openDateSheet('${ds}')" style="height:${rowH}px;border-right:${i===6?'none':'.5px solid var(--border)'};background:${isT?'#EEF4FF':inMo?'#fff':'#F8FAFC'};cursor:pointer">
-            <div style="width:20px;height:20px;border-radius:50%;background:${isT?'var(--blue)':'transparent'};color:${isT?'#fff':!inMo?'#C3CDD8':dow===0?'#EF4444':dow===6?'#3B82F6':'var(--text)'};display:flex;align-items:center;justify-content:center;margin:3px auto 0;font-size:11px;font-weight:${isT?700:400}">${d.getDate()}</div>
+          return `<div onclick="openDateSheet('${ds}')" style="border-right:${i===6?'none':'.5px solid var(--border)'};background:${isT?'#EEF4FF':inMo?'#fff':'#F8FAFC'};cursor:pointer">
+            <div style="width:${NUM_D}px;height:${NUM_D}px;border-radius:50%;background:${isT?'var(--blue)':'transparent'};color:${isT?'#fff':!inMo?'#C3CDD8':dow===0?'#EF4444':dow===6?'#3B82F6':'var(--text)'};display:flex;align-items:center;justify-content:center;margin:3px auto 0;font-size:${FS_NUM}px;font-weight:${isT?700:500}">${d.getDate()}</div>
           </div>`
         }).join('')}
       </div>
@@ -1688,14 +1704,14 @@ async function rSchedule(){
           return `<div onclick="event.stopPropagation();openDateSheet('${dkey(wk.days[sg.c1])}')" title="${e.title}"
             style="grid-column:${sg.c1+1} / span ${sg.span};grid-row:${sg.lane+1};background:${e.color||'#1A3A5C'};color:#fff;
             border-radius:${rl} ${rr} ${rr} ${rl};margin:0 ${sg.cutR?'0':'2px'} 2px ${sg.cutL?'0':'2px'};padding:0 4px;
-            font-size:10px;font-weight:500;line-height:${LANE_H-2}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+            font-size:${FS_BAR}px;font-weight:500;line-height:${LANE_H-3}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
             text-align:${sg.span>1?'center':'left'};cursor:pointer;pointer-events:auto">${sg.cutL?'‹ ':''}${e.title}</div>`
         }).join('')}
-        ${over.map((n,c)=>n?`<div style="grid-column:${c+1};grid-row:${laneCount};font-size:9px;color:var(--text2);padding-left:3px;pointer-events:none">+${n}</div>`:'').join('')}
+        ${over.map((n,c)=>n?`<div style="grid-column:${c+1};grid-row:${laneCount};font-size:${wide?11:9.5}px;color:var(--text2);padding-left:4px;pointer-events:none">+${n}</div>`:'').join('')}
       </div>
     </div>`
   })
-  cal+=`</div>`
+  cal+=`</div></div>`
 
   document.getElementById('main').innerHTML=cal
 }
