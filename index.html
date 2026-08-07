@@ -100,7 +100,11 @@ body{font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic
 #sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--white);border-radius:24px 24px 0 0;padding:14px 20px 32px;z-index:201;transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:90vh;overflow-y:auto}
 #sheet.on{transform:translateX(-50%) translateY(0)}
 .sh{width:40px;height:4px;background:#E1E4E8;border-radius:2px;margin:0 auto 18px}
-.st{font-size:20px;font-weight:700;margin-bottom:20px;color:var(--text);letter-spacing:-.03em}
+/* 저장 버튼이 없는 시트(근태 상세 등)는 이 ✕ 가 유일한 탈출구다. 항상 보이게 둔다 */
+#sheet-x{position:absolute;top:12px;right:14px;width:34px;height:34px;border:none;border-radius:11px;
+  background:var(--bg);color:var(--text2);font-size:15px;line-height:1;cursor:pointer;font-family:inherit;z-index:2}
+#sheet-x:active{background:#E1E4E8;color:var(--text)}
+.st{font-size:20px;font-weight:700;margin-bottom:20px;color:var(--text);letter-spacing:-.03em;padding-right:44px}
 .fg{margin-bottom:14px}
 .fl{font-size:13px;font-weight:600;color:var(--text-mid);margin-bottom:7px;display:block}
 .fi{width:100%;padding:15px 16px;border:none;border-radius:var(--r-md);font-size:16px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;appearance:none;-webkit-appearance:none;letter-spacing:-.02em;transition:box-shadow .15s}
@@ -357,7 +361,7 @@ select.fi{padding-right:42px;background-image:url("data:image/svg+xml;charset=ut
 </div>
 
 <div id="sbg" onclick="closeSheet()"></div>
-<div id="sheet"><div class="sh"></div><div id="sc"></div></div>
+<div id="sheet"><button id="sheet-x" onclick="closeSheet()" aria-label="닫기">✕</button><div class="sh"></div><div id="sc"></div></div>
 <div id="toast"></div>
 <div id="printarea"></div>
 
@@ -800,8 +804,17 @@ async function render(){
 
 // ── 유틸
 function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.style.background=err?'rgba(240,68,82,.96)':'rgba(25,31,40,.94)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
-function openSheet(html){document.getElementById('sc').innerHTML=html;document.getElementById('sbg').classList.add('on');document.getElementById('sheet').classList.add('on')}
-function closeSheet(){document.getElementById('sbg').classList.remove('on');document.getElementById('sheet').classList.remove('on');editId=null}
+function sheetHide(){document.getElementById('sbg').classList.remove('on');document.getElementById('sheet').classList.remove('on');editId=null}
+function openSheet(html){
+  document.getElementById('sc').innerHTML=html
+  document.getElementById('sbg').classList.add('on');document.getElementById('sheet').classList.add('on')
+  // 휴대폰 뒤로가기로도 닫히게 히스토리를 한 칸 쌓는다. 시트 내용만 바뀔 땐 중복해서 쌓지 않는다
+  if(!(history.state&&history.state.ov==='sheet'))history.pushState({ov:'sheet'},'')
+}
+// 버튼으로 닫을 때도 히스토리를 되돌려야 뒤로가기가 헛돌지 않는다
+function closeSheet(){if(history.state&&history.state.ov==='sheet')history.back();else sheetHide()}
+addEventListener('popstate',()=>sheetHide())
+addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('sheet').classList.contains('on'))closeSheet()})
 function openAdd(){if(screen==='sites')showSiteForm();else if(screen==='team')showMemberForm();else if(screen==='quotes')showQuoteForm();else if(screen==='edu')showEduForm()}
 function v(id){return document.getElementById(id)?.value?.trim()||''}
 function bc(s){return s==='진행중'?'bi':s==='완료'?'bd':s==='대기중'?'bw':'bh'}
