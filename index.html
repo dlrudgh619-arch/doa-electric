@@ -846,9 +846,16 @@ async function rHome(){
   document.getElementById('hdr-t').textContent='홈'
   document.getElementById('hdr-s').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`
 
-  // 히어로 — 오늘 신경 써야 할 건수를 한 문장으로
-  const todo=nRun+evs.length
-  const heroLine=todo?`오늘 챙길 일이<br>${todo}건 있어요`:'오늘은 잡힌 일이<br>없어요'
+  // 히어로 — 오늘 잡힌 일정 기준. 진행중 현장 수는 아래 현황 카드가 따로 보여준다
+  const heroLine=evs.length?`오늘 잡힌 일정이<br>${evs.length}건 있어요`:'오늘은 잡힌<br>일정이 없어요'
+
+  // 오늘 일정에 투입된 팀원 (일정이 있을 때만 조회)
+  const evMembers={}
+  if(evs.length){
+    const{data:ems}=await db.from('cal_event_members')
+      .select('event_id,member:members(name)').in('event_id',evs.map(e=>e.id))
+    ;(ems||[]).forEach(r=>{if(r.member?.name)(evMembers[r.event_id]=evMembers[r.event_id]||[]).push(r.member.name)})
+  }
 
   // 현황 카드
   const dash=`
@@ -876,23 +883,20 @@ async function rHome(){
     q('◎','var(--red-weak)','var(--red)','교육 자료',"go('edu')")
   ]
 
-  // 오늘의 현장 — 오늘 잡힌 일정이 있으면 그걸, 없으면 진행중 현장을 보여준다
-  const runSites=ss.filter(s=>s.status==='진행중').slice(0,4)
-  let todayRows
-  if(evs.length){
-    todayRows=evs.slice(0,5).map((e,i)=>{
-      const span=(e.end_date&&e.end_date!==e.work_date)?`${e.work_date} ~ ${e.end_date}`:'오늘'
-      return `<div class="row" onclick="openDateSheet('${td}')">
-        <div class="row-ico" style="background:${e.color||'var(--primary)'};color:#fff">${pad(i+1)}</div>
-        <div class="row-copy"><div class="row-title">${e.title}</div><div class="row-sub">${span}</div></div>
-        <div class="row-chev">›</div></div>`}).join('')
-  }else if(runSites.length){
-    todayRows=runSites.map((s,i)=>`<div class="row" onclick="go('sites')">
-      <div class="row-ico">${pad(i+1)}</div>
-      <div class="row-copy"><div class="row-title">${s.name}</div><div class="row-sub">${s.client||'발주처 미입력'}${s.start_date?' · '+s.start_date:''}</div></div>
-      <span class="badge bi" style="flex-shrink:0">진행 중</span>
-      <div class="row-chev">›</div></div>`).join('')
-  }else todayRows=''
+  // 오늘의 현장 — 오늘 날짜가 걸린 일정만 보여준다.
+  // 진행중 현장으로 대신 채우면 "오늘 갈 곳"이 아니라 "열려 있는 현장"이 나와서 뜻이 달라진다.
+  const dayNo=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5)+1
+  const todayRows=evs.slice(0,6).map((e,i)=>{
+    let when='오늘'
+    if(e.end_date&&e.end_date!==e.work_date){
+      when=`${dayNo(e.work_date,e.end_date)}일 중 ${dayNo(e.work_date,td)}일차`
+    }
+    const who=(evMembers[e.id]||[])
+    const whoTxt=who.length?` · ${who[0]}${who.length>1?` 외 ${who.length-1}명`:''}`:''
+    return `<div class="row" onclick="openDateSheet('${td}')">
+      <div class="row-ico" style="background:${e.color||'var(--primary)'};color:#fff">${pad(i+1)}</div>
+      <div class="row-copy"><div class="row-title">${e.title}</div><div class="row-sub">${when}${whoTxt}</div></div>
+      <div class="row-chev">›</div></div>`}).join('')
 
   const postHtml=(posts||[]).length?(posts||[]).map(p=>`
     <div class="li" onclick="go('edu')" style="cursor:pointer">
@@ -915,9 +919,9 @@ async function rHome(){
     ${dash}
     <div class="sec-hdr"><div class="sec-t">자주 쓰는 기능</div></div>
     <div class="quick-grid">${quick.join('')}</div>
-    <div class="sec-hdr"><div class="sec-t">오늘의 현장</div><button class="sec-a" onclick="go('sites')">전체보기</button></div>
+    <div class="sec-hdr"><div class="sec-t">오늘의 현장</div><button class="sec-a" onclick="go('schedule')">일정 전체보기</button></div>
     ${todayRows?`<div class="rows">${todayRows}</div>`
-      :`<div class="tip"><div class="tip-t">오늘 예정된 현장이 없어요</div><div class="tip-s">현장 탭에서 새 일정을 등록해보세요.</div></div>`}
+      :`<div class="tip"><div class="tip-t">오늘 잡힌 일정이 없어요</div><div class="tip-s">일정 탭에서 오늘 일정을 추가할 수 있어요.</div></div>`}
     <div class="sec-hdr"><div class="sec-t">최근 교육 게시글</div><button class="sec-a" onclick="go('edu')">전체보기</button></div>
     ${postHtml}
     ${notifSettingCard()}
